@@ -1,0 +1,6 @@
+
+Loose TODO:
+
+- replace many of the manual type classes with shapeless type class derivation
+- introduce intermediate representation to allow alternative String renderings and allow easy testability of added/removed
+- split Show and Diff

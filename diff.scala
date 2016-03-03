@@ -1,22 +1,16 @@
-package xdotai.diff
+package ai.x.diff
 import scala.collection.immutable.SortedMap
 import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.hlist._
 import org.cvogt.scala.string._
-import scalaz.{ :+: => _, Coproduct => _, _ }
-import Scalaz._
 
 object `package` {
   def red( s: String ) = Console.RED + s + Console.RESET
   def green( s: String ) = Console.GREEN + s + Console.RESET
+  def blue( s: String ) = Console.BLUE + s + Console.RESET
+  def pad( s: Any, i: Int = 5 ) = ( " " * ( i - s.toString.size ) ) + s
   def arrow( l: String, r: String ) = l + " -> " + r
   def showChange( l: String, r: String ) = red( l ) + " -> " + green( r )
 }
-/*
-Loose TODO:
-- replace many of the manual type classes with shapeless type class derivation
-- introduce intermediate representation to allow alternative String renderings and allow easy testability of added/removed
-- split Show and Diff
-*/
 
 abstract class Comparison {
   def string: String
@@ -298,54 +292,23 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
 
 }
 
-case class Bar( s: String, i: Int )
-case class Foo( bar: Bar, b: List[Int] )
-
 object Test extends App {
-  val before: Foo = Foo( Bar( "asdf", 5 ), 123 :: 1234 :: Nil )
-  val after: Foo = Foo( Bar( "asdf", 66 ), 1234 :: Nil )
+  sealed trait Parent
+  case class Bar( s: String, i: Int ) extends Parent
+  case class Foo( bar: Bar, b: List[Int], parent: Option[Parent] ) extends Parent
+
+  val before: Foo = Foo(
+    Bar( "asdf", 5 ),
+    List( 123, 1234 ),
+    Some( Bar( "asdf", 5 ) )
+  )
+  val after: Foo = Foo(
+    Bar( "asdf", 66 ),
+    List( 1234 ),
+    Some( Bar( "qwer", 5 ) )
+  )
 
   println(
     DiffShow.diff( before, after ).string
   )
-
-  /*
-
-  import pprint.Config.Defaults._
-
-  val actual = compare( before, after )
-  val expected = Different(
-    Tree( before ),
-    Tree( after ),
-    SortedMap(
-      "bar" -> Different(
-        Tree( Bar( "asdf", 5 ) ),
-        Tree( Bar( "asdf", 66 ) ),
-        SortedMap(
-          "s" -> Identical( Leaf( "asdf" ) ),
-          "i" -> Different(
-            Leaf( 5 ), Leaf( 66 ), SortedMap()
-          )
-        )
-      ),
-      "b" -> Different(
-        Leaf( 123 :: 1234 :: Nil ), Leaf( 1234 :: Nil ), SortedMap()
-      )
-    )
-  )
-  //pprint.pprintln( ( Generic[Bar] to Bar( "asdf", 5 ) ) delta ( Generic[Bar] to Bar( "asdf", 66 ) ) )
-  assert( actual == expected, "expected\n:" + pprint.tokenize( expected ).mkString + "\n\nactual:\n" + pprint.tokenize( actual ).mkString )
-
-  println( expected.show() )
-
-  """
-  Foo(
-    b   = List( 123 +, 1234 ),
-    bar = Bar(
-      s = asdf,
-      i = -5 +66
-    )
-  )
-  """
-  */
 }
