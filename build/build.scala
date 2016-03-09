@@ -10,7 +10,7 @@ class Build(context: cbt.Context) extends cbt.PublishBuild(context){
   override def artifactId = "diff_2.11"
   override def groupId = "ai.x"
 
-  override def runClass: String = "xdotai.diff.Test"
+  override def runClass: String = "ai.x.diff.Test"
 
   override def dependencies = super.dependencies ++ Seq(
     "com.chuusai" %% "shapeless" % "2.1.0",
