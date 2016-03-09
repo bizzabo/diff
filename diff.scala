@@ -4,12 +4,12 @@ import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.
 import org.cvogt.scala.string._
 
 object `package` {
-  def red( s: String ) = Console.RED + s + Console.RESET
-  def green( s: String ) = Console.GREEN + s + Console.RESET
-  def blue( s: String ) = Console.BLUE + s + Console.RESET
-  def pad( s: Any, i: Int = 5 ) = ( " " * ( i - s.toString.size ) ) + s
-  def arrow( l: String, r: String ) = l + " -> " + r
-  def showChange( l: String, r: String ) = red( l ) + " -> " + green( r )
+  def red( s: String ) = Console.RED ++ s ++ Console.RESET
+  def green( s: String ) = Console.GREEN ++ s ++ Console.RESET
+  def blue( s: String ) = Console.BLUE ++ s ++ Console.RESET
+  def pad( s: Any, i: Int = 5 ) = ( " " * ( i - s.toString.size ) ) ++ s.toString
+  def arrow( l: String, r: String ) = l ++ " -> " ++ r
+  def showChange( l: String, r: String ) = red( l ) ++ " -> " ++ green( r )
 }
 
 abstract class Comparison {
