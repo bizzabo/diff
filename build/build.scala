@@ -6,13 +6,13 @@ import scala.collection.immutable.Seq
 class Build(context: cbt.Context) extends cbt.PublishBuild(context){
   override def scalaVersion = "2.11.7"
 
-  override def version = "1.0"
+  override def version = "1.0-SNAPSHOT"
   override def artifactId = "diff_2.11"
   override def groupId = "ai.x"
 
   override def runClass: String = "ai.x.diff.Test"
 
-  override def dependencies = super.dependencies ++ Seq(
+  override def dependencies = super.dependencies :+ MavenRepository.central.resolve(
     "com.chuusai" %% "shapeless" % "2.1.0",
     "org.cvogt" %% "scala-extensions" % "0.4.1"
   )
