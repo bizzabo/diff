@@ -3,19 +3,21 @@ import java.net._
 import java.io.File
 import scala.collection.immutable.Seq
 
+// cbt:https://github.com/cvogt/cbt.git#cf7a66b7dfde8bb4386efe93a41f68996335db35
 class Build(context: cbt.Context) extends cbt.PublishBuild(context){
-  override def scalaVersion = "2.11.7"
+  override def defaultScalaVersion = "2.11.8"
 
-  override def version = "1.0-SNAPSHOT"
-  override def artifactId = "diff_2.11"
+  override def defaultVersion = "1.0"
+  override def artifactId = "diff"
   override def groupId = "ai.x"
 
   override def runClass: String = "ai.x.diff.Test"
 
-  override def dependencies = super.dependencies :+ MavenRepository.central.resolve(
-    "com.chuusai" %% "shapeless" % "2.1.0",
-    "org.cvogt" %% "scala-extensions" % "0.4.1"
-  )
+  override def dependencies = super.dependencies ++
+    Resolver( mavenCentral ).bind(
+      "com.chuusai" %% "shapeless" % "2.3.1",
+      "org.cvogt" %% "scala-extensions" % "0.4.1"
+    )
   override def scalacOptions = Seq( "-language:experimental.macros" )
 
   override def url = new URL("http://github.com/xdotai/diff")
