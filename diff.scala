@@ -4,13 +4,19 @@ import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.
 import org.cvogt.scala.string._
 
 object `package` {
-  def red( s: String ) = Console.RED ++ s ++ Console.RESET
-  def green( s: String ) = Console.GREEN ++ s ++ Console.RESET
-  def blue( s: String ) = Console.BLUE ++ s ++ Console.RESET
-  def pad( s: Any, i: Int = 5 ) = ( " " * ( i - s.toString.size ) ) ++ s.toString
-  def arrow( l: String, r: String ) = l ++ " -> " ++ r
-  def showChange( l: String, r: String ) = red( l ) ++ " -> " ++ green( r )
+  def red( s: String ) = Console.RED + s + Console.RESET
+  def green( s: String ) = Console.GREEN + s + Console.RESET
+  def blue( s: String ) = Console.BLUE + s + Console.RESET
+  def pad( s: Any, i: Int = 5 ) = ( " " * ( i - s.toString.size ) ) + s
+  def arrow( l: String, r: String ) = l + " -> " + r
+  def showChange( l: String, r: String ) = red( l ) + " -> " + green( r )
 }
+/*
+Loose TODO:
+- replace many of the manual type classes with shapeless type class derivation
+- introduce intermediate representation to allow alternative String renderings and allow easy testability of added/removed
+- split Show and Diff
+*/
 
 abstract class Comparison {
   def string: String
@@ -221,7 +227,6 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
             show( added ).map( ( arrow _ ).tupled ).map( green )
           ).flatten.map( s => Option( ( "", s ) ) )
         )
-
       if ( removed.isEmpty && added.isEmpty && changed.isEmpty )
         Identical( string )
       else
