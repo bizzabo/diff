@@ -1,5 +1,4 @@
 package ai.x.diff
-import scala.collection.immutable.SortedMap
 import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.hlist._
 import org.cvogt.scala.string._
 
@@ -170,16 +169,17 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
       val ( left, right ) = ( _left.toList, _right.toList )
       val removed = left.filterNot( l => right.exists( r => DiffShow.diffable( l, r ) ) )
       val added = right.filterNot( r => left.exists( l => DiffShow.diffable( l, r ) ) )
-      val comparable = left.filter( l => right.exists( r => DiffShow.diffable( l, r ) ) )
+      val comparableLeft = left.filter( l => right.exists( r => DiffShow.diffable( l, r ) ) )
+      val comparableRight = right.filter( l => left.exists( r => DiffShow.diffable( l, r ) ) )
       val identical = for {
-        l <- comparable
-        r <- comparable if DiffShow.diffable( l, r )
+        l <- comparableLeft
+        r <- comparableRight if DiffShow.diffable( l, r )
         Identical( s ) <- DiffShow.diff( l, r ) :: Nil
       } yield l
 
       val changed = for {
-        l <- comparable diff identical
-        r <- comparable diff identical if DiffShow.diffable( l, r )
+        l <- comparableLeft diff identical
+        r <- comparableRight diff identical if DiffShow.diffable( l, r )
         // The pattern match here is fishy. It should really only contain Different ones, but might not if == is screwed up.
         Different( s ) <- DiffShow.diff( l, r ) :: Nil
       } yield s
