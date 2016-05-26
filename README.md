@@ -9,7 +9,7 @@ A tool to visually compare Scala data structures with out of the box support for
 ### Usage
 
 ```scala
-println(  DiffShow.diff( before, after ).string  )
+println(  ai.x.diff.DiffShow.diff( before, after ).string  )
 ```
 
 #### Output
@@ -35,7 +35,11 @@ val after: Foo = Foo(
 )
 ```
 
-### SBT Dependency
+### Helpful tips
+
+```scala
+import ai.x.diff._
+```
 
 #### Custom comparison
 
@@ -60,7 +64,7 @@ def ignore[T] = new DiffShow[T] {
   def diff( left: T, right: T ) = Identical( "<not compared>" )
   override def diffable( left: T, right: T ) = true
 }
-implicit def LocationIdShow = ignore[LocationId]
+implicit def LocationIdShow: DiffShow[LocationId] = ignore[LocationId]
 ```
 
 #### Influence comparison in collections
@@ -73,7 +77,7 @@ implicit def PersonDiffShow[L <: HList](
   implicit
   labelled:  LabelledGeneric.Aux[Person, L],
   hlistShow: Lazy[DiffShowFields[L]]
-) = new CaseClassDiffShow[Person, L] {
+): DiffShow[Person] = new CaseClassDiffShow[Person, L] {
   override def diffable( left: Person, right: Person ) = left._id === right._id
 }
 ```
