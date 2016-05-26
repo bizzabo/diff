@@ -2,6 +2,8 @@
 
 A tool to visually compare Scala data structures with out of the box support for arbitrary case classes.
 
+Be aware: Collections (List, Seq, etc.) are compared like sets, i.e. ignoring order.
+
 ### SBT Dependency
 
 `"ai.x" %% "diff" % "1.0"`
