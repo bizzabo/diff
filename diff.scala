@@ -40,7 +40,7 @@ object Different {
   def apply( left: String, right: String ): Different = Different( showChange( left, right ) )
 }
 
-abstract class DiffShow[-T] { // co-variant to allow Seq type class for List
+abstract class DiffShow[-T] { // contra-variant to allow Seq type class for List
   def show( t: T ): String
   def diff( left: T, right: T ): Comparison
   def diffable( left: T, right: T ) = show( left ) == show( right )
@@ -51,7 +51,7 @@ object DiffShow extends DiffShowInstances {
   def diff[T]( left: T, right: T )( implicit diffShow: DiffShow[T] ): Comparison = diffShow.diff( left, right )
   def diffable[T]( left: T, right: T )( implicit diffShow: DiffShow[T] ) = diffShow.diffable( left, right )
 }
-abstract class DiffShowFields[-T] { // co-variant to allow Seq type class for List
+abstract class DiffShowFields[-T] { // contra-variant to allow Seq type class for List
   def show( t: T ): Map[String, String]
   def diff( left: T, right: T ): Map[String, Comparison]
   def diffable( left: T, right: T ) = show( left ) == show( right )
