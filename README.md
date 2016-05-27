@@ -1,5 +1,7 @@
 ## diff
 
+[![Join the chat at https://gitter.im/xdotai/diff](https://badges.gitter.im/xdotai/diff.svg)](https://gitter.im/xdotai/diff?utm_source=badge&utm_medium=badge&utm_campaign=pr-badge&utm_content=badge)
+
 A tool to visually compare Scala data structures with out of the box support for arbitrary case classes.
 
 Be aware: Collections (List, Seq, etc.) are compared like sets, i.e. ignoring order.
