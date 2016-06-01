@@ -19,15 +19,18 @@ abstract class Comparison {
     case Identical( s ) => create( s )
     case c: Different   => c
   }
+  def isIdentical: Boolean
 }
 case class Identical( string: String ) extends Comparison {
   def create( s: String ) = Identical( s )
+  override def isIdentical = true
 }
 object Identical {
   def apply[T: DiffShow]( value: T ): Identical = Identical( DiffShow.show( value ) )
 }
 case class Different( string: String ) extends Comparison {
   def create( s: String ) = Different( s )
+  override def isIdentical = false
 }
 object Different {
   def apply[T: DiffShow]( left: T, right: T ): Different = Different( DiffShow.show( left ), DiffShow.show( right ) )
