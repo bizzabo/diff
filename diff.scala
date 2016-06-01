@@ -10,12 +10,6 @@ object `package` {
   def arrow( l: String, r: String ) = l + " -> " + r
   def showChange( l: String, r: String ) = red( l ) + " -> " + green( r )
 }
-/*
-Loose TODO:
-- replace many of the manual type classes with shapeless type class derivation
-- introduce intermediate representation to allow alternative String renderings and allow easy testability of added/removed
-- split Show and Diff
-*/
 
 abstract class Comparison {
   def string: String
