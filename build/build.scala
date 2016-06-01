@@ -7,7 +7,7 @@ import scala.collection.immutable.Seq
 class Build(context: cbt.Context) extends cbt.PublishBuild(context){
   override def defaultScalaVersion = "2.11.8"
 
-  override def defaultVersion = "1.0"
+  override def defaultVersion = "1.0.1"
   override def artifactId = "diff"
   override def groupId = "ai.x"
 

@@ -10,12 +10,6 @@ object `package` {
   def arrow( l: String, r: String ) = l + " -> " + r
   def showChange( l: String, r: String ) = red( l ) + " -> " + green( r )
 }
-/*
-Loose TODO:
-- replace many of the manual type classes with shapeless type class derivation
-- introduce intermediate representation to allow alternative String renderings and allow easy testability of added/removed
-- split Show and Diff
-*/
 
 abstract class Comparison {
   def string: String
@@ -25,15 +19,18 @@ abstract class Comparison {
     case Identical( s ) => create( s )
     case c: Different   => c
   }
+  def isIdentical: Boolean
 }
 case class Identical( string: String ) extends Comparison {
   def create( s: String ) = Identical( s )
+  override def isIdentical = true
 }
 object Identical {
   def apply[T: DiffShow]( value: T ): Identical = Identical( DiffShow.show( value ) )
 }
 case class Different( string: String ) extends Comparison {
   def create( s: String ) = Different( s )
+  override def isIdentical = false
 }
 object Different {
   def apply[T: DiffShow]( left: T, right: T ): Different = Different( DiffShow.show( left ), DiffShow.show( right ) )
@@ -43,7 +40,7 @@ object Different {
 abstract class DiffShow[-T] { // contra-variant to allow Seq type class for List
   def show( t: T ): String
   def diff( left: T, right: T ): Comparison
-  def diffable( left: T, right: T ) = show( left ) == show( right )
+  def diffable( left: T, right: T ) = diff(left, right).isIdentical
 }
 object DiffShow extends DiffShowInstances {
   def apply[T]( implicit diffShow: DiffShow[T] ) = diffShow
@@ -54,7 +51,6 @@ object DiffShow extends DiffShowInstances {
 abstract class DiffShowFields[-T] { // contra-variant to allow Seq type class for List
   def show( t: T ): Map[String, String]
   def diff( left: T, right: T ): Map[String, Comparison]
-  def diffable( left: T, right: T ) = show( left ) == show( right )
 }
 
 abstract class DiffShowFieldsLowPriority {
