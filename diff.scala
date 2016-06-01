@@ -40,7 +40,7 @@ object Different {
 abstract class DiffShow[-T] { // contra-variant to allow Seq type class for List
   def show( t: T ): String
   def diff( left: T, right: T ): Comparison
-  def diffable( left: T, right: T ) = show( left ) == show( right )
+  def diffable( left: T, right: T ) = diff(left, right).isIdentical
 }
 object DiffShow extends DiffShowInstances {
   def apply[T]( implicit diffShow: DiffShow[T] ) = diffShow

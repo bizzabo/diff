@@ -1,10 +1,64 @@
 import ai.x.diff._
 import scala.collection.immutable.SortedMap
-object Main extends App {
-  sealed trait Parent
-  case class Bar( s: String, i: Int ) extends Parent
-  case class Foo( bar: Bar, b: List[Int], parent: Option[Parent] ) extends Parent
+sealed trait Parent
+case class Bar( s: String, i: Int ) extends Parent
+case class Foo( bar: Bar, b: List[Int], parent: Option[Parent] ) extends Parent
 
+case class Id(int: Int)
+case class Row(id: Id, value: String)
+object Main extends App {
+  val bar = Bar("test",1)
+  val barAsParent: Parent = bar
+  val foo = Foo( bar, Nil, None )
+  val fooAsParent: Parent = foo
+
+  assert( DiffShow.diff( bar, bar ).isIdentical )
+  assert( DiffShow.diff( barAsParent, barAsParent ).isIdentical )
+  assert( DiffShow.diff( bar, barAsParent ).isIdentical )
+  assert( DiffShow.diff( barAsParent, bar ).isIdentical )
+  assert( DiffShow.diff( foo, foo ).isIdentical )
+  assert( DiffShow.diff( foo, fooAsParent ).isIdentical )
+  assert( DiffShow.diff( fooAsParent, foo ).isIdentical )
+  assert( DiffShow.diff( fooAsParent, fooAsParent ).isIdentical )
+
+  assert( !DiffShow.diff[Parent]( bar, foo ).isIdentical )
+  assert( !DiffShow.diff( bar, fooAsParent ).isIdentical )
+  assert( !DiffShow.diff( barAsParent, foo ).isIdentical )
+  assert( !DiffShow.diff( barAsParent, fooAsParent ).isIdentical )
+
+  assert( DiffShow.diff( Seq(bar), Seq(bar) ).isIdentical )
+  // Seqs are compared as Sets
+  assert( DiffShow.diff( Seq(bar), Seq(bar,bar) ).isIdentical )
+
+  assert( !DiffShow.diff[Seq[Parent]]( Seq(foo,bar), Seq(bar) ).isIdentical )
+  assert( !DiffShow.diff[Seq[Parent]]( Seq(foo), Seq(bar) ).isIdentical )
+
+  def ignore[T] = new DiffShow[T] {
+    def show( t: T ) = t.toString
+    def diff( left: T, right: T ) = Identical( "<not compared>" )
+    override def diffable( left: T, right: T ) = true
+  }
+
+  {
+    implicit val ignoreId = ignore[Id]
+    assert( DiffShow.diff( Id(1), Id(1) ).isIdentical )
+    assert( DiffShow.diff( Id(1), Id(2) ).isIdentical )  
+
+    val rowA = Row(Id(1),"foo")
+    val rowB = Row(Id(2),"foo")
+    assert( DiffShow.diff( rowA, rowB ).isIdentical )
+    assert( DiffShow.diff( Seq(rowA), Seq(rowB) ).isIdentical )
+  }
+
+  assert( DiffShow.diff( Id(1), Id(1) ).isIdentical )
+  assert( !DiffShow.diff( Id(1), Id(2) ).isIdentical )  
+
+  val rowA = Row(Id(1),"foo")
+  val rowB = Row(Id(2),"foo")
+  assert( !DiffShow.diff( rowA, rowB ).isIdentical )
+  assert( !DiffShow.diff( Seq(rowA), Seq(rowB) ).isIdentical )
+
+  /*
   val before: Foo = Foo(
     Bar( "asdf", 5 ),
     List( 123, 1234 ),
@@ -19,6 +73,7 @@ object Main extends App {
   println(
     DiffShow.diff( before, after ).string
   )
+  */
 
   {
     implicit def StringDiffShow = new DiffShow[String] {
