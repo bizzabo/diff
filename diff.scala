@@ -51,7 +51,6 @@ object DiffShow extends DiffShowInstances {
 abstract class DiffShowFields[-T] { // contra-variant to allow Seq type class for List
   def show( t: T ): Map[String, String]
   def diff( left: T, right: T ): Map[String, Comparison]
-  def diffable( left: T, right: T ) = show( left ) == show( right )
 }
 
 abstract class DiffShowFieldsLowPriority {

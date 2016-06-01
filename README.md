@@ -8,12 +8,12 @@ Be aware: Collections (List, Seq, etc.) are compared like sets, i.e. ignoring or
 
 ### SBT Dependency
 
-`"ai.x" %% "diff" % "1.0"`
+`"ai.x" %% "diff" % "1.0.1"`
 
 ### Usage
 
 ```scala
-println(  ai.x.diff.DiffShow.diff( before, after ).string  )
+println(  ai.x.diff.DiffShow.diff[Foo]( before, after ).string  )
 ```
 
 #### Output

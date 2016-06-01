@@ -1,5 +1,6 @@
 Loose TODO:
 
+- remove fallback implicit and make sure tests pass
 - allow to always show certain fields for selected types even if unchanged in order to see relevant context
 - replace many of the manual type classes with shapeless type class derivation
 - introduce intermediate representation to allow alternative String renderings and allow easy testability of added/removed
