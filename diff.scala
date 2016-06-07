@@ -58,9 +58,11 @@ abstract class DiffShowFieldsLowPriority {
     def show( t: T ) = _show( t )
     def diff( left: T, right: T ) = _diff( left, right )
   }
+
   implicit def other[T: scala.reflect.ClassTag]: DiffShowFields[T] = fallbackException[T]
   def fallbackException[T: scala.reflect.ClassTag] = {
     val T = scala.reflect.classTag[T].toString
+    // throw new Exception( s"Cannot find DiffShowFields[$T]" )
     create[T](
       v => throw new Exception( s"Cannot find DiffShowFields[$T] to show value " + v ),
       ( l, r ) => throw new Exception( s"Cannot find DiffShowFields[$T] to diff values ($l, $r)" )
@@ -93,16 +95,16 @@ object DiffShowFields {
 }
 
 abstract class DiffShowInstancesLowPriority {
-  // enable for debugging if your type class can't be found
-  implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = fallbackException[T]
-
   def create[T]( _show: T => String, _diff: ( T, T ) => Comparison ) = new DiffShow[T] {
     def show( t: T ) = _show( t )
     def diff( left: T, right: T ) = _diff( left, right )
   }
 
+  // enable for debugging if your type class can't be found
+  implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = fallbackException[T]
   def fallbackException[T: scala.reflect.ClassTag] = {
     val T = scala.reflect.classTag[T].toString
+    // throw new Exception( s"Cannot find DiffShow[$T]" )
     create[T](
       v => throw new Exception( s"Cannot find DiffShow[$T] to show value " + v ),
       ( l, r ) => throw new Exception( s"Cannot find DiffShow[$T] to diff values ($l, $r)" )
@@ -231,6 +233,11 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
   }
 
   // instances for Shapeless types
+
+  implicit object CNilDiffShow extends DiffShow[CNil] {
+    def show( t: CNil ) = throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
+    def diff( left: CNil, right: CNil ) = throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
+  }
 
   implicit def coproductDiffShow[Name <: Symbol, Head, Tail <: Coproduct](
     implicit
