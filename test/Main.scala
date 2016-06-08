@@ -1,4 +1,5 @@
 import ai.x.diff._
+import shapeless._
 import scala.collection.immutable.SortedMap
 sealed trait Parent
 case class Bar( s: String, i: Int ) extends Parent
@@ -87,6 +88,28 @@ object Main extends App {
         "adsf" :: "qwer" :: Nil,
         "axx" :: "yxcv" :: Nil
       ).string
+    )
+  }
+
+  {
+    implicit def HListDiffShow: DiffShow[HList] = new DiffShow[shapeless.HList] {
+      def show(t: HList) = t.toString
+      def diff(left: HList, right: HList) = if (left == right) Identical(left) else Different(left, right)
+      override def diffable(left: HList, right: HList) =  left.runtimeLength == right.runtimeLength
+    }
+
+    println(
+      DiffShow.diff(
+        "abcd" :: 123 :: 'c' :: HNil,
+        "abcd" :: 123 :: 'c' :: HNil
+      )
+    )
+
+    println(
+      DiffShow.diff(
+        "abcd" :: 123 :: 'c' :: HNil,
+        "abcd" :: 125 :: 'b' :: HNil
+      )
     )
   }
 
