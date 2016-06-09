@@ -6,11 +6,20 @@ A tool to visually compare Scala data structures with out of the box support for
 
 Be aware: Collections (List, Seq, etc.) are compared like sets, i.e. ignoring order.
 
-### SBT Dependency
+### SBT Dependencies
 
-`"ai.x" %% "diff" % "1.0.2"`
+#### Scala 2.11
 
-cross-published for scala 2.11 and 2.10
+```scala
+"ai.x" %% "diff" % "1.0.2"
+```
+
+#### Scala 2.10
+
+```scala
+"ai.x" %% "diff" % "1.0.2"
+compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+```
 
 ### Usage
 
