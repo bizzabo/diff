@@ -3,7 +3,7 @@ import java.net._
 import java.io.File
 import scala.collection.immutable.Seq
 
-// cbt:https://github.com/cvogt/cbt.git#bf534fc64e54af905402833cace7687d73ba8817
+// cbt:https://github.com/cvogt/cbt.git#b103b922f8671e7f45cef0cbd876ebe26cb0a2fa
 class Build(context: cbt.Context) extends cbt.PublishBuild(context){
   override def defaultScalaVersion = "2.11.8"
 
