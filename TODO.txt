@@ -1,6 +1,6 @@
 Loose TODO:
 
 - allow to always show certain fields for selected types even if unchanged in order to see relevant context
-- replace many of the manual type classes with shapeless type class derivation
+- replace many of the manual type classes with shapeless automatic type class derivation https://github.com/milessabin/shapeless/blob/master/core/src/main/scala/shapeless/typeclass.scala
 - introduce intermediate representation to allow alternative String renderings and allow easy testability of added/removed
 - split Show and Diff
