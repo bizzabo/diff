@@ -18,6 +18,7 @@ abstract class Comparison {
   def flatMap( f: String => Comparison ): Comparison = f( this.string ) match {
     case Identical( s ) => create( s )
     case c: Different   => c
+    case c: Error   => c
   }
   def isIdentical: Boolean
 }
@@ -30,6 +31,10 @@ object Identical {
 }
 case class Different( string: String ) extends Comparison {
   def create( s: String ) = Different( s )
+  override def isIdentical = false
+}
+case class Error( string: String ) extends Comparison {
+  def create( s: String ) = Error( s )
   override def isIdentical = false
 }
 object Different {
@@ -106,8 +111,8 @@ abstract class DiffShowInstancesLowPriority {
     val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShow[$T]" )
     create[T](
-      v => throw new Exception( s"Cannot find DiffShow[$T] to show value " + v ),
-      ( l, r ) => throw new Exception( s"Cannot find DiffShow[$T] to diff values ($l, $r)" )
+      v => red(s"ERROR: Cannot find DiffShow[$T] to show value " + v),
+      ( l, r ) => Error( s"Cannot find DiffShow[$T] to diff values ($l, $r)" )
     )
   }
 }
@@ -289,6 +294,7 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
     def diff( left: T, right: T ) = {
       val fields = hlistShow.value.diff( labelled to left, labelled to right ).toList.sortBy( _._1 ).map {
         case ( name, Different( value ) ) => Some( name -> value )
+        case ( name, Error( value ) ) => Some( name -> value )
         case ( name, Identical( _ ) )     => None
       }
       if ( fields.flatten.nonEmpty ) Different(
