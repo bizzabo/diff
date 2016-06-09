@@ -138,7 +138,7 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
         if ( inlined.contains( "\n" ) ) s"(\n${keyValues.flatten.head._2.indent( 1 )}\n)" // avoid x in Some( x = ... )
         else s"( ${keyValues.flatten.head._2} )" // avoid x in Some(\n x = ... \n)
       )
-      else "( " + ( if ( suppressed ) "...," else "" ) + (
+      else "(" + ( if ( suppressed ) " ...," else "" ) + (
         if ( inlined.size < 120 ) s""" ${inlined} """ // short enough content to inline
         else ( "\n" + args.mkString( ",\n" ).indent( 1 ) + "\n" ) // long content, break lines
       ) + ")"
