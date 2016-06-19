@@ -1,10 +1,11 @@
 import cbt._
-class Build( context: Context ) extends BuildBuild( context ){
+// cbt:https://github.com/cvogt/cbt.git#bc2231720d3620b5e0459fa12c467bf675fcfdf5
+class Build(val context: Context) extends BuildBuild{
   override def dependencies = (
     super.dependencies // don't forget super.dependencies here
     ++
     Seq(
-      GitDependency("https://github.com/xdotai/free-software-build.git","389913f3a8e65315a146b6c6131964df6e1318c6")
+      GitDependency("https://github.com/xdotai/free-software-build.git","ed68f308e211dd02cb92f1c5f98d78979b472ca8")
     )
   )
 }
