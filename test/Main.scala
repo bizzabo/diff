@@ -1,4 +1,5 @@
 import ai.x.diff._
+import ai.x.diff.conversions._
 import scala.collection.immutable.SortedMap
 sealed trait Parent
 case class Bar( s: String, i: Int ) extends Parent

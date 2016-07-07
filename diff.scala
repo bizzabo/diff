@@ -11,6 +11,21 @@ object `package` {
   def showChange( l: String, r: String ) = red( l ) + " -> " + green( r )
 }
 
+object conversions{
+  implicit def seqAsSet[E:DiffShow]: DiffShow[Seq[E]] = new DiffShow[Seq[E]]{
+    def show(t: Seq[E]) = DiffShow[Set[E]].show(t.toSet)
+    def diff(left: Seq[E], right: Seq[E]) = DiffShow[Set[E]].diff(left.toSet, right.toSet)
+  }
+  implicit def listAsSet[E:DiffShow]: DiffShow[List[E]] = new DiffShow[List[E]]{
+    def show(t: List[E]) = DiffShow[Set[E]].show(t.toSet)
+    def diff(left: List[E], right: List[E]) = DiffShow[Set[E]].diff(left.toSet, right.toSet)
+  }
+  implicit def vectorAsSet[E:DiffShow]: DiffShow[Vector[E]] = new DiffShow[Vector[E]]{
+    def show(t: Vector[E]) = DiffShow[Set[E]].show(t.toSet)
+    def diff(left: Vector[E], right: Vector[E]) = DiffShow[Set[E]].diff(left.toSet, right.toSet)
+  }
+}
+
 abstract class Comparison {
   def string: String
   def create( s: String ): Comparison
@@ -42,7 +57,7 @@ object Different {
   def apply( left: String, right: String ): Different = Different( showChange( left, right ) )
 }
 
-abstract class DiffShow[-T] { // contra-variant to allow Seq type class for List
+abstract class DiffShow[T] {
   def show( t: T ): String
   def diff( left: T, right: T ): Comparison
   def diffable( left: T, right: T ) = diff(left, right).isIdentical
@@ -161,40 +176,35 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
   // instances for Scala collection types
 
   // TODO: this should probably Set[T] and Seq[T] in our case be a converter instance on top of it
-  implicit def seqDiffShow[T: DiffShow]: DiffShow[Seq[T]] = new DiffShow[Seq[T]] {
+  implicit def setDiffShow[T: DiffShow]: DiffShow[Set[T]] = new DiffShow[Set[T]] {
     // this is hacky and requires an asInstanceOf. Mayber there is a cleaner implementation.
-    def show( l: Seq[T] ) = {
+    override def show( l: Set[T] ): String = {
       val fields = l.map( v => DiffShow.show( v ) ).toList
-      constructor( "Seq", fields.map( ( "", _ ) ) )
+      constructor( "Set", fields.map( ( "", _ ) ) )
     }
 
-    def diff( _left: Seq[T], _right: Seq[T] ) = {
-      val ( left, right ) = ( _left.toList, _right.toList )
-      val removed = left.filterNot( l => right.exists( r => DiffShow.diffable( l, r ) ) )
-      val added = right.filterNot( r => left.exists( l => DiffShow.diffable( l, r ) ) )
-      val comparableLeft = left.filter( l => right.exists( r => DiffShow.diffable( l, r ) ) )
-      val comparableRight = right.filter( l => left.exists( r => DiffShow.diffable( l, r ) ) )
-      val identical = for {
-        l <- comparableLeft
-        r <- comparableRight if DiffShow.diffable( l, r )
-        Identical( s ) <- DiffShow.diff( l, r ) :: Nil
-      } yield l
+    override def diff( left: Set[T], right: Set[T] ): ai.x.diff.Comparison = {
+      var _right = right diff left
+      val results = (left diff right).map{ l =>
+        _right.find( DiffShow.diffable( l, _ ) ).map{
+          r =>
+            _right = _right - r
+            Right(
+              DiffShow.diff(l,r)
+            )
+        }.getOrElse( Left(l) )
+      }
+      val removed = results.flatMap( _.left.toOption.map( r => Some("" ->   red(DiffShow.show[T](r))) ) ).toList
+      val added   = _right     .map(                      r => Some("" -> green(DiffShow.show[T](r)))   ).toList
+      val (identical,changed) = results.flatMap(_.right.toOption.map{
+        case Identical(s) => None
+        case Different(s) => Some("" -> s)
+      }).toList.partition(_.isEmpty)
 
-      val changed = for {
-        l <- comparableLeft diff identical
-        r <- comparableRight diff identical if DiffShow.diffable( l, r )
-        // The pattern match here is fishy. It should really only contain Different ones, but might not if == is screwed up.
-        Different( s ) <- DiffShow.diff( l, r ) :: Nil
-      } yield s
-
-      val string =
-        constructorOption(
-          "Seq",
-          identical.map( _ => None ) ++ Seq(
-            changed,
-            removed.map( DiffShow.show[T] ).map( red ),
-            added.map( DiffShow.show[T] ).map( green )
-          ).flatten.map( s => Option( ( "", s ) ) )
+      val string = constructorOption(
+        "Set",
+        changed ++ removed ++ added
+        ++ ( if( (identical ++ (left intersect right)).nonEmpty ) Some(None) else None )
         )
 
       if ( removed.isEmpty && added.isEmpty && changed.isEmpty )
