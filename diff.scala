@@ -132,7 +132,41 @@ abstract class DiffShowInstancesLowPriority {
   }
 }
 
-abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
+abstract class DiffShowInstances extends DiffShowInstances2 {
+  implicit def optionDiffShow[T, L <: Coproduct](
+    implicit
+    coproduct:     Generic.Aux[Option[T], L],
+    coproductShow: Lazy[DiffShow[L]]
+  ): DiffShow[Option[T]] = new DiffShow[Option[T]] {
+    def show( t: Option[T] ) = coproductShow.value.show( coproduct.to( t ) )
+    def diff( l: Option[T], r: Option[T] ) = coproductShow.value.diff( coproduct.to( l ), coproduct.to( r ) )
+  }
+  implicit def someDiffShow[T](implicit ds: DiffShow[T]) = new DiffShow[Some[T]]{
+    def show( s: Some[T] ) = constructor("Some", List("" -> ds.show(s.get)))
+    def diff( l: Some[T], r: Some[T] ) = ds.diff(l.get, r.get).map( s => constructor("Some", List("" -> s)) )
+  }
+  
+  implicit object noneDiffShow extends DiffShow[None.type]{
+    def show( t: None.type ) = "None"
+    def diff( l: None.type, r: None.type ) = Identical(None)
+  }
+
+  def primitive[T]( show: T => String ) = create[T](
+    show,
+    ( left: T, right: T ) => if ( left == right ) Identical( show( left ) ) else Different( show( left ), show( right ) )
+  )
+
+  // instances for primitive types
+
+  implicit def booleanDiffShow = primitive[Boolean]( _.toString )
+  implicit def floatDiffShow = primitive[Float]( _.toString )
+  implicit def doubleDiffShow = primitive[Double]( _.toString )
+  implicit def intDiffShow = primitive[Int]( _.toString )
+  implicit def stringDiffShow = primitive[String]( s => "\"" + s.replace( "(\n|\r)+", " " ).replace( " +", " " ) + "\"" )
+}
+abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
+  self: DiffShowInstances =>
+
   // helper methods
   def constructor( name: String, keyValues: List[( String, String )] ): String = constructorOption( name, keyValues.map( Option( _ ) ) )
   def constructorOption( name: String, keyValues: List[Option[( String, String )]] ): String = {
@@ -159,19 +193,6 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
       ) + ")"
     )
   }
-
-  def primitive[T]( show: T => String ) = create[T](
-    show,
-    ( left: T, right: T ) => if ( left == right ) Identical( show( left ) ) else Different( show( left ), show( right ) )
-  )
-
-  // instances for primitive types
-
-  implicit def booleanDiffShow = primitive[Boolean]( _.toString )
-  implicit def floatDiffShow = primitive[Float]( _.toString )
-  implicit def doubleDiffShow = primitive[Double]( _.toString )
-  implicit def intDiffShow = primitive[Int]( _.toString )
-  implicit def stringDiffShow = primitive[String]( s => "\"" + s.replace( "(\n|\r)+", " " ).replace( " +", " " ) + "\"" )
 
   // instances for Scala collection types
 
@@ -205,7 +226,7 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
         "Set",
         changed ++ removed ++ added
         ++ ( if( (identical ++ (left intersect right)).nonEmpty ) Some(None) else None )
-        )
+      )
 
       if ( removed.isEmpty && added.isEmpty && changed.isEmpty )
         Identical( string )
@@ -256,17 +277,16 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
 
   implicit def coproductDiffShow[Name <: Symbol, Head, Tail <: Coproduct](
     implicit
-    key:      Witness.Aux[Name],
     headShow: DiffShow[Head],
     tailShow: DiffShow[Tail]
-  ): DiffShow[FieldType[Name, Head] :+: Tail] = new DiffShow[FieldType[Name, Head] :+: Tail] {
-    def show( co: FieldType[Name, Head] :+: Tail ) = {
+  ): DiffShow[Head :+: Tail] = new DiffShow[Head :+: Tail] {
+    def show( co: Head :+: Tail ) = {
       co match {
         case Inl( found ) => headShow.show( found )
         case Inr( tail )  => tailShow.show( tail )
       }
     }
-    def diff( left: FieldType[Name, Head] :+: Tail, right: FieldType[Name, Head] :+: Tail ) = {
+    def diff( left: Head :+: Tail, right: Head :+: Tail ) = {
       ( left, right ) match {
         case ( Inl( l ), Inl( r ) ) => headShow.diff( l, r )
         case ( Inr( l ), Inr( r ) ) => tailShow.diff( l, r )
@@ -278,14 +298,14 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
 
   implicit def sealedDiffShow[T, L <: Coproduct](
     implicit
-    coproduct:     LabelledGeneric.Aux[T, L],
+    coproduct:     Generic.Aux[T, L],
     coproductShow: Lazy[DiffShow[L]]
   ): DiffShow[T] = new DiffShow[T] {
     def show( t: T ) = coproductShow.value.show( coproduct.to( t ) )
     def diff( l: T, r: T ) = coproductShow.value.diff( coproduct.to( l ), coproduct.to( r ) )
   }
 
-  implicit def caseClassDiffShow[T, L <: HList](
+  implicit def caseClassDiffShow[T <: Product with Serializable, L <: HList](
     implicit
     labelled:  LabelledGeneric.Aux[T, L],
     hlistShow: Lazy[DiffShowFields[L]]
