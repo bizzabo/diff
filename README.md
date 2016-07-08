@@ -18,7 +18,7 @@ Be aware: Collections (List, Seq, etc.) are compared like sets, i.e. ignoring or
 
 ```scala
 "ai.x" %% "diff" % "1.0.2"
-compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
+addCompilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 ```
 
 ### Usage
