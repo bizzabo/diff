@@ -1,6 +1,7 @@
 package ai.x.diff
 import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.hlist._
 import org.cvogt.scala.string._
+import java.util.UUID
 
 object `package` {
   def red( s: String ) = Console.RED + s + Console.RESET
@@ -157,6 +158,28 @@ abstract class DiffShowInstances extends DiffShowInstancesLowPriority {
   implicit def doubleDiffShow = primitive[Double]( _.toString )
   implicit def intDiffShow = primitive[Int]( _.toString )
   implicit def stringDiffShow = primitive[String]( s => "\"" + s.replace( "(\n|\r)+", " " ).replace( " +", " " ) + "\"" )
+
+  // instances for some common types
+
+  implicit val uuidDiffShow = primitive[UUID]( _.toString )
+
+  implicit def eitherDiffShow[L: DiffShow, R: DiffShow] = {
+    val show = ( d: Either[L, R] ) => d.toString
+    DiffShow.create[Either[L, R]]( show, ( l, r ) =>
+      if ( l == r ) {
+        Identical( show( l ) )
+      } else {
+        Different((l, r) match {
+          case (Left(firstValue), Left(secondValue)) =>
+            showChange( DiffShow.show[L](firstValue), DiffShow.show[L](secondValue) )
+          case (Right(firstValue), Right(secondValue)) =>
+            showChange( DiffShow.show[R](firstValue), DiffShow.show[R](secondValue) )
+          case (firstValue, secondValue) =>
+            showChange( show(firstValue), show(secondValue) )
+        })
+      }
+    )
+  }
 
   // instances for Scala collection types
 
