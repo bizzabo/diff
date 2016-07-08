@@ -1,10 +1,9 @@
 import cbt._
 import ai.x.build.{XdotaiFreeSoftwareBuild,team}
-import scala.collection.immutable.Seq
-// cbt:https://github.com/cvogt/cbt.git#bc2231720d3620b5e0459fa12c467bf675fcfdf5
+// cbt:https://github.com/cvogt/cbt.git#ec35ffeba2f5e8a2b1e61c3ba7da4276aa0c8211
 class Build(val context: cbt.Context) extends XdotaiFreeSoftwareBuild{
   def name = "diff"
-  def defaultVersion = "1.1.0-RC1"
+  def defaultVersion = "1.1.0"
   def description = "diff tool for Scala data structures (nested case classes etc)"
 
   override def runClass: String = "ai.x.diff.Test"
