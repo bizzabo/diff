@@ -11,13 +11,13 @@ Be aware: Collections (List, Seq, etc.) are compared like sets, i.e. ignoring or
 #### Scala 2.11
 
 ```scala
-"ai.x" %% "diff" % "1.0.2"
+"ai.x" %% "diff" % "1.1.0"
 ```
 
 #### Scala 2.10
 
 ```scala
-"ai.x" %% "diff" % "1.0.2"
+"ai.x" %% "diff" % "1.1.0"
 compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 ```
 
