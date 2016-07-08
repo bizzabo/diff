@@ -1,6 +1,6 @@
 import cbt._
 import ai.x.build.{XdotaiFreeSoftwareBuild,team}
-// cbt:https://github.com/cvogt/cbt.git#ec35ffeba2f5e8a2b1e61c3ba7da4276aa0c8211
+// cbt:https://github.com/cvogt/cbt.git#b5d86995128a45c33117ecfb7365f0eb2b450a61
 class Build(val context: cbt.Context) extends XdotaiFreeSoftwareBuild{
   def name = "diff"
   def defaultVersion = "1.1.0"
