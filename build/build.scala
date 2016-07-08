@@ -15,6 +15,6 @@ class Build(val context: cbt.Context) extends XdotaiFreeSoftwareBuild{
   override def dependencies = super.dependencies ++
     Resolver( mavenCentral ).bind(
       "com.chuusai" %% "shapeless" % "2.3.1",
-      "org.cvogt" %% "scala-extensions" % "0.4.1"
+      "org.cvogt" %% "scala-extensions" % "0.5.0"
     )
 }

@@ -1,6 +1,7 @@
 package ai.x.diff
 import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.hlist._
-import org.cvogt.scala.string._
+import org.cvogt.scala.StringExtensions
+import org.cvogt.scala.debug.ThrowableExtensions
 
 object `package` {
   def red( s: String ) = Console.RED + s + Console.RESET
@@ -50,7 +51,7 @@ case class Different( string: String ) extends Comparison {
 }
 case class Error( string: String ) extends Comparison {
   def create( s: String ) = Error( s )
-  override def isIdentical = false
+  override def isIdentical = throw new Exception( string )
 }
 object Different {
   def apply[T: DiffShow]( left: T, right: T ): Different = Different( DiffShow.show( left ), DiffShow.show( right ) )
@@ -111,7 +112,6 @@ object DiffShowFields {
         showTail.value.diff( left.tail, right.tail ) + ( key.value.name -> DiffShow.diff[Value]( left.head, right.head ) )
       }
     }
-
 }
 
 abstract class DiffShowInstancesLowPriority {
@@ -126,8 +126,8 @@ abstract class DiffShowInstancesLowPriority {
     val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShow[$T]" )
     create[T](
-      v => red(s"ERROR: Cannot find DiffShow[$T] to show value " + v),
-      ( l, r ) => Error( s"Cannot find DiffShow[$T] to diff values ($l, $r)" )
+      v => red(new Exception(s"ERROR: Cannot find DiffShow[$T] to show value " + v).showStackTrace),
+      ( l, r ) => Error( new Exception(s"ERROR: Cannot find DiffShow[$T] to show values ($l, $r)").showStackTrace )
     )
   }
 }
