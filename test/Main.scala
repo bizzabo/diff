@@ -1,4 +1,5 @@
 import ai.x.diff._
+import ai.x.diff.conversions._
 import scala.collection.immutable.SortedMap
 import java.util.UUID
 
@@ -14,26 +15,35 @@ object Main extends App {
   val foo = Foo( bar, Nil, None )
   val fooAsParent: Parent = foo
 
-  assert( DiffShow.diff( bar, bar ).isIdentical )
-  assert( DiffShow.diff( barAsParent, barAsParent ).isIdentical )
-  assert( DiffShow.diff( bar, barAsParent ).isIdentical )
-  assert( DiffShow.diff( barAsParent, bar ).isIdentical )
-  assert( DiffShow.diff( foo, foo ).isIdentical )
-  assert( DiffShow.diff( foo, fooAsParent ).isIdentical )
-  assert( DiffShow.diff( fooAsParent, foo ).isIdentical )
-  assert( DiffShow.diff( fooAsParent, fooAsParent ).isIdentical )
+  def assertIdentical[T:DiffShow](left: T, right: T) = {
+    val c = DiffShow.diff(left, right)
+    assert(c.isIdentical, c.toString)
+  }
+  def assertNotIdentical[T:DiffShow](left: T, right: T) = {
+    val c = DiffShow.diff(left, right)
+    assert(!c.isIdentical, c.toString)
+  }
 
-  assert( !DiffShow.diff[Parent]( bar, foo ).isIdentical )
-  assert( !DiffShow.diff( bar, fooAsParent ).isIdentical )
-  assert( !DiffShow.diff( barAsParent, foo ).isIdentical )
-  assert( !DiffShow.diff( barAsParent, fooAsParent ).isIdentical )
+  assertIdentical( bar, bar )
+  assertIdentical( barAsParent, barAsParent )
+  assertIdentical( bar, barAsParent )
+  assertIdentical( barAsParent, bar )
+  assertIdentical( foo, foo )
+  assertIdentical( foo, fooAsParent )
+  assertIdentical( fooAsParent, foo )
+  assertIdentical( fooAsParent, fooAsParent )
 
-  assert( DiffShow.diff( Seq(bar), Seq(bar) ).isIdentical )
+  assertNotIdentical[Parent]( bar, foo )
+  assertNotIdentical( bar, fooAsParent )
+  assertNotIdentical( barAsParent, foo )
+  assertNotIdentical( barAsParent, fooAsParent )
+
+  assertIdentical( Seq(bar), Seq(bar) )
   // Seqs are compared as Sets
-  assert( DiffShow.diff( Seq(bar), Seq(bar,bar) ).isIdentical )
+  assertIdentical( Seq(bar), Seq(bar,bar) )
 
-  assert( !DiffShow.diff[Seq[Parent]]( Seq(foo,bar), Seq(bar) ).isIdentical )
-  assert( !DiffShow.diff[Seq[Parent]]( Seq(foo), Seq(bar) ).isIdentical )
+  assertNotIdentical[Seq[Parent]]( Seq(foo,bar), Seq(bar) )
+  assertNotIdentical[Seq[Parent]]( Seq(foo), Seq(bar) )
 
   {
     val uuid1 = UUID.randomUUID()
@@ -75,22 +85,22 @@ object Main extends App {
 
   {
     implicit val ignoreId = ignore[Id]
-    assert( DiffShow.diff( Id(1), Id(1) ).isIdentical )
-    assert( DiffShow.diff( Id(1), Id(2) ).isIdentical )
+    assertIdentical( Id(1), Id(1) )
+    assertIdentical( Id(1), Id(2) )
 
     val rowA = Row(Id(1),"foo")
     val rowB = Row(Id(2),"foo")
-    assert( DiffShow.diff( rowA, rowB ).isIdentical )
-    assert( DiffShow.diff( Seq(rowA), Seq(rowB) ).isIdentical )
+    assertIdentical( rowA, rowB )
+    assertIdentical( Seq(rowA), Seq(rowB) )
   }
 
-  assert( DiffShow.diff( Id(1), Id(1) ).isIdentical )
-  assert( !DiffShow.diff( Id(1), Id(2) ).isIdentical )
+  assertIdentical( Id(1), Id(1) )
+  assertNotIdentical( Id(1), Id(2) )
 
   val rowA = Row(Id(1),"foo")
   val rowB = Row(Id(2),"foo")
-  assert( !DiffShow.diff( rowA, rowB ).isIdentical )
-  assert( !DiffShow.diff( Seq(rowA), Seq(rowB) ).isIdentical )
+  assertNotIdentical( rowA, rowB )
+  assertNotIdentical( Seq(rowA), Seq(rowB) )
 
   /*
   val before: Foo = Foo(
@@ -116,6 +126,30 @@ object Main extends App {
       override def diffable( left: String, right: String ) = left.lift(0) == right.lift(0)
     }
 
+    println(
+      DiffShow.diff(
+        "x" :: Nil,
+        "x" :: Nil
+      ).string
+    )
+    println(
+      DiffShow.diff(
+        "x" :: Nil,
+        Nil
+      ).string
+    )
+    println(
+      DiffShow.diff(
+        Nil,
+        "x" :: Nil
+      ).string
+    )
+    println(
+      DiffShow.diff(
+        "adsf" :: "qwer" :: "x" :: Nil,
+        "axx" :: "yxcv" :: "x" :: Nil
+      ).string
+    )
     println(
       DiffShow.diff(
         "adsf" :: "qwer" :: Nil,
