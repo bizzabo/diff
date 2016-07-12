@@ -69,19 +69,12 @@ abstract class DiffShowFields[-T] { // contra-variant to allow Seq type class fo
 }
 
 abstract class DiffShowFieldsLowPriority {
-  def create[T]( _show: T => Map[String, String], _diff: ( T, T ) => Map[String, Comparison] ) = new DiffShowFields[T] {
-    def show( t: T ) = _show( t )
-    def diff( left: T, right: T ) = _diff( left, right )
-  }
-
   implicit def other[T: scala.reflect.ClassTag]: DiffShowFields[T] = fallbackException[T]
-  def fallbackException[T: scala.reflect.ClassTag] = {
+  def fallbackException[T: scala.reflect.ClassTag] = new DiffShowFields[T]{
     val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShowFields[$T]" )
-    create[T](
-      v => throw new Exception( s"Cannot find DiffShowFields[$T] to show value " + v ),
-      ( l, r ) => throw new Exception( s"Cannot find DiffShowFields[$T] to diff values ($l, $r)" )
-    )
+    def show(v: T) = throw new Exception( s"Cannot find DiffShowFields[$T] to show value " + v )
+    def diff(l: T, r: T) = throw new Exception( s"Cannot find DiffShowFields[$T] to diff values ($l, $r)" )
   }
 }
 
@@ -109,20 +102,13 @@ object DiffShowFields {
 }
 
 abstract class DiffShowInstancesLowPriority {
-  def create[T]( _show: T => String, _diff: ( T, T ) => Comparison ) = new DiffShow[T] {
-    def show( t: T ) = _show( t )
-    def diff( left: T, right: T ) = _diff( left, right )
-  }
-
   // enable for debugging if your type class can't be found
   implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = fallbackException[T]
-  def fallbackException[T: scala.reflect.ClassTag] = {
-    val T = scala.reflect.classTag[T].toString
+  def fallbackException[T: scala.reflect.ClassTag]: DiffShow[T] = new DiffShow[T]{
+    private val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShow[$T]" )
-    create[T](
-      v => red(new Exception(s"ERROR: Cannot find DiffShow[$T] to show value " + v).showStackTrace),
-      ( l, r ) => Error( new Exception(s"ERROR: Cannot find DiffShow[$T] to show values ($l, $r)").showStackTrace )
-    )
+    def show(v: T) = red(new Exception(s"ERROR: Cannot find DiffShow[$T] to show value " + v).showStackTrace)
+    def diff(l:T, r:T) = Error( new Exception(s"ERROR: Cannot find DiffShow[$T] to show values ($l, $r)").showStackTrace )
   }
 }
 
