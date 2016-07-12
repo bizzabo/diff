@@ -12,31 +12,40 @@ case class Row(id: Id, value: String)
 object Main extends App {
   val bar = Bar("test",1)
   val barAsParent: Parent = bar
+  val barString = """Bar( i = 1, s = "test" )"""
   val foo = Foo( bar, Nil, None )
   val fooAsParent: Parent = foo
+  val fooString = """Foo( b = Set(), bar = Bar( i = 1, s = "test" ), parent = None )"""
 
-  def assertIdentical[T:DiffShow](left: T, right: T) = {
+  def assertIdentical[T:DiffShow](left: T, right: T, expectedOutput: String = null) = {
     val c = DiffShow.diff(left, right)
     assert(c.isIdentical, c.toString)
+    Option(expectedOutput).foreach(
+      e => assert(c.string == e, "Expected: " ++ e ++ " Found: " ++ c.string)
+    )
+    assert(c.string == DiffShow.show(left), "Expected: " ++ DiffShow.show(left) ++ " Found: " ++ c.string)
   }
-  def assertNotIdentical[T:DiffShow](left: T, right: T) = {
+  def assertNotIdentical[T:DiffShow](left: T, right: T, expectedOutput: String = null) = {
     val c = DiffShow.diff(left, right)
     assert(!c.isIdentical, c.toString)
+    Option(expectedOutput).foreach{
+      e => assert(c.string == e, "Expected: " ++ e ++ " Found: " ++ c.string)
+    }
   }
 
-  assertIdentical( bar, bar )
-  assertIdentical( barAsParent, barAsParent )
-  assertIdentical( bar, barAsParent )
-  assertIdentical( barAsParent, bar )
-  assertIdentical( foo, foo )
-  assertIdentical( foo, fooAsParent )
-  assertIdentical( fooAsParent, foo )
-  assertIdentical( fooAsParent, fooAsParent )
+  assertIdentical( bar, bar, barString )
+  assertIdentical( barAsParent, barAsParent, barString )
+  assertIdentical( bar, barAsParent, barString )
+  assertIdentical( barAsParent, bar , barString)
+  assertIdentical( foo, foo, fooString )
+  assertIdentical( foo, fooAsParent, fooString )
+  assertIdentical( fooAsParent, foo, fooString )
+  assertIdentical( fooAsParent, fooAsParent, fooString )
 
-  assertNotIdentical[Parent]( bar, foo )
-  assertNotIdentical( bar, fooAsParent )
-  assertNotIdentical( barAsParent, foo )
-  assertNotIdentical( barAsParent, fooAsParent )
+  assertNotIdentical[Parent]( bar, foo, showChange(bar, foo) )
+  assertNotIdentical( bar, fooAsParent, showChange(bar, foo) )
+  assertNotIdentical( barAsParent, foo, showChange(bar, foo) )
+  assertNotIdentical( barAsParent, fooAsParent, showChange(bar, foo) )
 
   assertIdentical( Seq(bar), Seq(bar) )
   // Seqs are compared as Sets
@@ -49,10 +58,8 @@ object Main extends App {
     val uuid1 = UUID.randomUUID()
     val uuidAs1 = UUID.fromString(uuid1.toString)
     val uuid2 = UUID.randomUUID()
-    val uuidDiff = DiffShow.diff( uuid1, uuid2 )
-    assert( DiffShow.diff( uuid1, uuidAs1 ).isIdentical )
-    assert( !uuidDiff.isIdentical )
-    assert( uuidDiff.string == showChange( uuid1.toString, uuid2.toString ) )
+    assertIdentical( uuid1, uuidAs1 )
+    assertNotIdentical( uuid1, uuid2 )
   }
 
   {
@@ -63,15 +70,15 @@ object Main extends App {
 
     val eitherDiff1 = DiffShow.diff( leftEitherFoo, rightEitherFoo )
     assert( !eitherDiff1.isIdentical )
-    assert( eitherDiff1.string == showChange( "Left(foo)", "Right(foo)") )
+    assert( eitherDiff1.string == showChangeRaw( """Left( "foo" )""", """Right( "foo" )"""), eitherDiff1.string )
 
     val eitherDiff2 = DiffShow.diff( leftEitherFoo, leftEitherBar )
     assert( !eitherDiff2.isIdentical )
-    assert( eitherDiff2.string == s"""Left( ${showChange( "\"foo\"","\"bar\""  )} )""" )
+    assert( eitherDiff2.string == s"""Left( ${showChangeRaw( "\"foo\"","\"bar\""  )} )""", eitherDiff2.string )
 
     val eitherDiff3 = DiffShow.diff( rightEitherFoo, rightEitherBar )
     assert( !eitherDiff3.isIdentical )
-    assert( eitherDiff3.string == s"""Right( ${showChange( "\"foo\"","\"bar\"" )} )""" )
+    assert( eitherDiff3.string == s"""Right( ${showChangeRaw( "\"foo\"","\"bar\"" )} )""" )
 
     assert( DiffShow.diff(leftEitherFoo, leftEitherFoo).isIdentical )
     assert( DiffShow.diff(rightEitherFoo, rightEitherFoo).isIdentical )
@@ -85,13 +92,13 @@ object Main extends App {
 
   {
     implicit val ignoreId = ignore[Id]
-    assertIdentical( Id(1), Id(1) )
-    assertIdentical( Id(1), Id(2) )
+    assert( DiffShow.diff(Id(1), Id(1)).isIdentical )
+    assert( DiffShow.diff(Id(1), Id(2)).isIdentical )
 
     val rowA = Row(Id(1),"foo")
     val rowB = Row(Id(2),"foo")
-    assertIdentical( rowA, rowB )
-    assertIdentical( Seq(rowA), Seq(rowB) )
+    assert( DiffShow.diff(rowA, rowB).isIdentical )
+    assert( DiffShow.diff( Seq(rowA), Seq(rowB) ).isIdentical )
   }
 
   assertIdentical( Id(1), Id(1) )
@@ -120,9 +127,9 @@ object Main extends App {
   */
 
   {
-    implicit def StringDiffShow = new DiffShow[String] {
-      def show( t: String ) = t
-      def diff( left: String, right: String ) = if(left == right) Identical(left) else Different(left, right)
+    implicit def StringDiffShow: DiffShow[String] = new DiffShow[String] {
+      def show( t: String ) = "\"" ++ t ++ "\""
+      def diff( left: String, right: String ) = if(left == right) Identical(left) else Different(left, right)(this,this)
       override def diffable( left: String, right: String ) = left.lift(0) == right.lift(0)
     }
 

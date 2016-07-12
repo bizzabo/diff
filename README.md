@@ -61,10 +61,11 @@ import ai.x.diff._
 Sometimes you may need to write your own type class instances. For example for non-case classes that don't compare well using ==.
 
 ```scala
-implicit def localTimeDiffShow = {
-  val show = ( d: org.joda.time.LocalTime ) => "LocalTime(" + d.toString + ")"
-  DiffShow.create[org.joda.time.LocalTime]( show, ( l, r ) =>
-    if ( l isEqual r ) Identical( show( l ) ) else Different( showChange( show( l ), show( r ) ) ) )
+import org.joda.time.LocalTime
+implicit def localTimeDiffShow: DiffShow[LocalTime] = new DiffShow[LocalTime]{
+  def show ( d: LocalTime ) = "LocalTime(" + d.toString + ")"
+  def diff( l: LocalTime, r: LocalTime ) =
+    if ( l isEqual r ) Identical( show( l ) ) else Different( showChange( l, r ) )
 }
 ```
 
@@ -74,7 +75,7 @@ Sometimes you may want to ignore some parts of your data during comparison.
 You can do so by type, e.g. for non-deterministic parts like ObjectId, which always differ.
 
 ```scala
-def ignore[T] = new DiffShow[T] {
+def ignore[T]: DiffShow[T] = new DiffShow[T] {
   def show( t: T ) = t.toString
   def diff( left: T, right: T ) = Identical( "<not compared>" )
   override def diffable( left: T, right: T ) = true
