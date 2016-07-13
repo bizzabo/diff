@@ -27,6 +27,13 @@ compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 println(  ai.x.diff.DiffShow.diff[Foo]( before, after ).string  )
 ```
 
+Be aware that diff throws an Exception if a DiffShow type class instance for some field
+can't be found rather than a type error.
+If you use diff in a testing or debugging scenario that's usually not a problem.
+The advantage is that the Exception can tell exactly which instance wasn't found. A type error
+can only point to the outer most class (`Foo` in this case) even if it is actually one of it's deeply nested fields that is lacking an instance for it's type. Knowing only `Foo` would not be very helpful to pin point
+which instance is missing.
+
 #### Output
 
 <img width="422" alt="example-output" src="https://cloud.githubusercontent.com/assets/274947/15580477/e46957e6-2336-11e6-919c-3eaf00f60cff.png">
