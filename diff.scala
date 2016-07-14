@@ -149,6 +149,7 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
   implicit def floatDiffShow: DiffShow[Float] = primitive( _.toString )
   implicit def doubleDiffShow: DiffShow[Double] = primitive( _.toString )
   implicit def intDiffShow: DiffShow[Int] = primitive( _.toString )
+  implicit def longDiffShow: DiffShow[Long] = primitive( _.toString )
   implicit def stringDiffShow: DiffShow[String] = primitive( s => "\"" ++ s ++ "\"" )
 
   // instances for some common types
