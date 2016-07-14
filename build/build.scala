@@ -3,7 +3,7 @@ import ai.x.build.{XdotaiFreeSoftwareBuild,team}
 // cbt:https://github.com/cvogt/cbt.git#b5d86995128a45c33117ecfb7365f0eb2b450a61
 class Build(val context: cbt.Context) extends XdotaiFreeSoftwareBuild{
   def name = "diff"
-  def defaultVersion = "1.1.0"
+  def defaultVersion = "1.2.0"
   def description = "diff tool for Scala data structures (nested case classes etc)"
 
   override def runClass: String = "ai.x.diff.Test"
