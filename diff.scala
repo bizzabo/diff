@@ -70,8 +70,7 @@ abstract class DiffShowFields[-T] { // contra-variant to allow Seq type class fo
 }
 
 abstract class DiffShowFieldsLowPriority {
-  implicit def other[T: scala.reflect.ClassTag]: DiffShowFields[T] = fallbackException[T]
-  def fallbackException[T: scala.reflect.ClassTag] = new DiffShowFields[T]{
+  implicit def otherDiffShowFields[T: scala.reflect.ClassTag]: DiffShowFields[T] = new DiffShowFields[T]{
     val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShowFields[$T]" )
     def show(v: T) = throw new Exception( s"Cannot find DiffShowFields[$T] to show value " + v )
@@ -104,8 +103,7 @@ object DiffShowFields {
 
 abstract class DiffShowInstancesLowPriority {
   // enable for debugging if your type class can't be found
-  implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = fallbackException[T]
-  def fallbackException[T: scala.reflect.ClassTag]: DiffShow[T] = new DiffShow[T]{
+  implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = new DiffShow[T]{
     private val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShow[$T]" )
     def show(v: T) = red(new Exception(s"ERROR: Cannot find DiffShow[$T] to show value " + v).showStackTrace)
