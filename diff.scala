@@ -3,6 +3,7 @@ import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.
 import org.cvogt.scala.StringExtensions
 import java.util.UUID
 import org.cvogt.scala.debug.ThrowableExtensions
+import org.cvogt.scala.constraint.{CaseClass, SingletonObject, boolean}
 
 object `package` {
   def red( s: String ) = Console.RED + s + Console.RESET
@@ -129,9 +130,9 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
     def diff( l: Some[T], r: Some[T] ) = ds.diff(l.get, r.get).map( s => constructor("Some", List("" -> s)) )
   }
   
-  implicit object noneDiffShow extends DiffShow[None.type]{
-    def show( t: None.type ) = "None"
-    def diff( l: None.type, r: None.type ) = Identical(None)
+  implicit def singletonObjectDiffShow[T: SingletonObject]: DiffShow[T] = new DiffShow[T]{
+    def show( t: T ) = t.getClass.getSimpleName.stripSuffix("$")
+    def diff( l: T, r: T ) = Identical( l )
   }
 
   def primitive[T]( show: T => String ) = {
@@ -176,6 +177,38 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
           })
         }
       }
+    }
+  }
+
+  implicit def caseClassDiffShow[T <: Product with Serializable: CaseClass, L <: HList](
+    implicit
+    ev: boolean.![SingletonObject[T]],
+    labelled:  LabelledGeneric.Aux[T, L],
+    hlistShow: Lazy[DiffShowFields[L]]
+  ): DiffShow[T] = new CaseClassDiffShow[T, L]
+
+  /** reusable class for case class instances, can be used to customize "diffable" for specific case classes */
+  class CaseClassDiffShow[T: CaseClass, L <: HList](
+    implicit
+    labelled:  LabelledGeneric.Aux[T, L],
+    hlistShow: Lazy[DiffShowFields[L]]
+  ) extends DiffShow[T] {
+    implicit val diffShow = this
+
+    def show( t: T ) = {
+      val fields = hlistShow.value.show( labelled to t ).toList.sortBy( _._1 )
+      constructor( t.getClass.getSimpleName, fields )
+    }
+    def diff( left: T, right: T ) = {
+      val fields = hlistShow.value.diff( labelled to left, labelled to right ).toList.sortBy( _._1 ).map {
+        case ( name, Different( value ) ) => Some( name -> value )
+        case ( name, Error( value ) ) => Some( name -> value )
+        case ( name, Identical( _ ) )     => None
+      }
+      if ( fields.flatten.nonEmpty ) Different(
+        constructorOption( left.getClass.getSimpleName, fields )
+      )
+      else Identical( left )
     }
   }
 }
@@ -319,35 +352,5 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
     def show( t: T ) = coproductShow.value.show( coproduct.to( t ) )
     def diff( l: T, r: T ) = coproductShow.value.diff( coproduct.to( l ), coproduct.to( r ) )
   }
-
-  implicit def caseClassDiffShow[T <: Product with Serializable, L <: HList](
-    implicit
-    labelled:  LabelledGeneric.Aux[T, L],
-    hlistShow: Lazy[DiffShowFields[L]]
-  ): DiffShow[T] = new CaseClassDiffShow[T, L]
-
-  /** reusable class for case class instances, can be used to customize "diffable" for specific case classes */
-  class CaseClassDiffShow[T, L <: HList](
-    implicit
-    labelled:  LabelledGeneric.Aux[T, L],
-    hlistShow: Lazy[DiffShowFields[L]]
-  ) extends DiffShow[T] {
     implicit val diffShow = this
-    def show( t: T ) = {
-      val fields = hlistShow.value.show( labelled to t ).toList.sortBy( _._1 )
-      constructor( t.getClass.getSimpleName, fields )
-    }
-    def diff( left: T, right: T ) = {
-      val fields = hlistShow.value.diff( labelled to left, labelled to right ).toList.sortBy( _._1 ).map {
-        case ( name, Different( value ) ) => Some( name -> value )
-        case ( name, Error( value ) ) => Some( name -> value )
-        case ( name, Identical( _ ) )     => None
-      }
-      if ( fields.flatten.nonEmpty ) Different(
-        constructorOption( left.getClass.getSimpleName, fields )
-      )
-      else Identical( left )
-    }
-  }
-
 }
