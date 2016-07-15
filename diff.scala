@@ -23,7 +23,7 @@ object conversions{
   }
 }
 
-abstract class Comparison {
+sealed abstract class Comparison {
   def string: String
   def create( s: String ): Comparison
   def map( f: String => String ): Comparison = create( f( this.string ) )
@@ -130,15 +130,15 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
   
   implicit def singletonObjectDiffShow[T: SingletonObject]: DiffShow[T] = new DiffShow[T]{
     def show( t: T ) = t.getClass.getSimpleName.stripSuffix("$")
-    def diff( l: T, r: T ) = Identical( l )
+    def diff( l: T, r: T ) = Identical( l )(singletonObjectDiffShow[T])
   }
 
   def primitive[T]( show: T => String ) = {
     val _show = show
     new DiffShow[T]{
-      implicit val diffShow = this
+      implicit val diffShow: DiffShow[T] = this
       def show(t: T) = _show(t)
-      def diff( left: T, right: T ) = if ( left == right ) Identical( left ) else Different( left, right )
+      def diff( left: T, right: T ) = if ( left == right ) Identical( left )(diffShow) else Different( left, right )(diffShow,diffShow)
     }
   }
 
@@ -194,7 +194,7 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
     implicit val diffShow = this
 
     def show( t: T ) = {
-      val fields = hlistShow.value.show( labelled to t ).toList.sortBy( _._1 )
+      val fields = hlistShow.value.show( labelled to t ).toList.sortBy( _._1 )(scala.math.Ordering.String)
       constructor( t.getClass.getSimpleName, fields )
     }
     def diff( left: T, right: T ) = {
@@ -202,7 +202,7 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
         case ( name, Different( value ) ) => Some( name -> value )
         case ( name, Error( value ) ) => Some( name -> value )
         case ( name, Identical( _ ) )     => None
-      }
+      }(scala.collection.immutable.List.canBuildFrom[Option[(String, String)]])
       if ( fields.flatten.nonEmpty ) Different(
         constructorOption( left.getClass.getSimpleName, fields )
       )
@@ -220,7 +220,7 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
     val args = keyValues.collect {
       case Some( ( "", r ) ) => r
       case Some( ( l, r ) )  => s"$l = $r"
-    }
+    }(scala.collection.immutable.List.canBuildFrom[String])
 
     val inlined = args.mkString( ", " )
     name.stripSuffix( "$" ) + (
@@ -246,8 +246,8 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
   implicit def setDiffShow[T: DiffShow]: DiffShow[Set[T]] = new DiffShow[Set[T]] {
     // this is hacky and requires an asInstanceOf. Mayber there is a cleaner implementation.
     override def show( l: Set[T] ): String = {
-      val fields = l.map( v => DiffShow.show( v ) ).toList
-      constructor( "Set", fields.map( ( "", _ ) ) )
+      val fields = l.map( v => DiffShow.show( v ) )(scala.collection.immutable.Set.canBuildFrom[String]).toList
+      constructor( "Set", fields.map( ( "", _ ) )(scala.collection.immutable.List.canBuildFrom[(String,String)]) )
     }
 
     override def diff( left: Set[T], right: Set[T] ): ai.x.diff.Comparison = {
@@ -260,12 +260,13 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
               DiffShow.diff(l,r)
             )
         }.getOrElse( Left(l) )
-      }
-      val removed = results.flatMap( _.left.toOption.map( r => Some("" ->   red(DiffShow.show[T](r))) ) ).toList
-      val added   = _right     .map(                      r => Some("" -> green(DiffShow.show[T](r)))   ).toList
+      }(collection.immutable.Set.canBuildFrom[Either[T,Comparison]])
+      val removed = results.flatMap( _.left.toOption.map( r => Some("" ->   red(DiffShow.show[T](r))) ) )(scala.collection.immutable.Set.canBuildFrom[Option[(String,String)]]).toList
+      val added   = _right     .map(                      r => Some("" -> green(DiffShow.show[T](r)))   )(scala.collection.immutable.Set.canBuildFrom[Option[(String,String)]]).toList
       val (identical,changed) = results.flatMap(_.right.toOption.map{
         case Identical(s) => None
         case Different(s) => Some("" -> s)
+        case Error(e) => Some("" -> ("ERROR: " + e))
       }).toList.partition(_.isEmpty)
 
       if ( removed.isEmpty && added.isEmpty && changed.isEmpty )
@@ -292,22 +293,24 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
       val identical = left.keys.toList intersect right.keys.toList
       val removed = left.keys.toList diff right.keys.toList
       val added = right.keys.toList diff left.keys.toList
-      def show( keys: List[K] ) = keys.map( k => DiffShow.show( k ) -> DiffShow.show( right( k ) ) )
+      def show( keys: List[K] ) = keys.map( k => DiffShow.show( k ) -> DiffShow.show( right( k ) ) )(collection.immutable.List.canBuildFrom[(String, String)])
+      /*
       val changed = for {
         key <- left.keys.toList diff removed
         Different( s ) <- DiffShow.diff( left( key ), right( key ) ) :: Nil
       } yield s
+      */
 
       val string =
         constructorOption(
           "Map",
           identical.map( _ => None ) ++ Seq(
-            changed,
+            //changed,
             show( removed ).map( ( arrow _ ).tupled ).map( red ),
             show( added ).map( ( arrow _ ).tupled ).map( green )
           ).flatten.map( s => Option( ( "", s ) ) )
         )
-      if ( removed.isEmpty && added.isEmpty && changed.isEmpty )
+      if ( removed.isEmpty && added.isEmpty )// && changed.isEmpty )
         Identical( string )
       else
         Different( string )
@@ -317,8 +320,8 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
   // instances for Shapeless types
 
   implicit object CNilDiffShow extends DiffShow[CNil] {
-    def show( t: CNil ) = throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
-    def diff( left: CNil, right: CNil ) = throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
+    def show( t: CNil ) = "CNil"//throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
+    def diff( left: CNil, right: CNil ) = Identical(null) //throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
   }
 
   implicit def coproductDiffShow[Name <: Symbol, Head, Tail <: Coproduct](

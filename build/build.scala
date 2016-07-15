@@ -11,9 +11,13 @@ class Build(val context: cbt.Context) extends XdotaiFreeSoftwareBuild{
   def inceptionYear = 2016
   def developers = Seq( team.cvogt )
 
+  override def defaultScalaVersion = "2.10.6"
+
   override def dependencies = super.dependencies ++
     Resolver( mavenCentral ).bind(
       "com.chuusai" %% "shapeless" % "2.3.1",
       "org.cvogt" %% "scala-extensions" % "0.5.1"
     )
+
+  override def scalacOptions = super.scalacOptions :+ "-Xprint:typer"
 }
