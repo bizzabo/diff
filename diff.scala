@@ -1,7 +1,9 @@
 package ai.x.diff
 import shapeless._, record._, shapeless.syntax._, labelled._, ops.record._, ops.hlist._
 import org.cvogt.scala.StringExtensions
+import java.util.UUID
 import org.cvogt.scala.debug.ThrowableExtensions
+import org.cvogt.scala.constraint.{CaseClass, SingletonObject, boolean}
 
 object `package` {
   def red( s: String ) = Console.RED + s + Console.RESET
@@ -9,21 +11,15 @@ object `package` {
   def blue( s: String ) = Console.BLUE + s + Console.RESET
   def pad( s: Any, i: Int = 5 ) = ( " " * ( i - s.toString.size ) ) + s
   def arrow( l: String, r: String ) = l + " -> " + r
-  def showChange( l: String, r: String ) = red( l ) + " -> " + green( r )
+  def showChangeRaw( l: String, r: String ): String = red( l ) + " -> " + green( r )
+  def showChange[L:DiffShow,R:DiffShow]( l: L, r: R ): String = showChangeRaw( DiffShow.show(l), DiffShow.show(r) )
 }
+
 
 object conversions{
   implicit def seqAsSet[E:DiffShow]: DiffShow[Seq[E]] = new DiffShow[Seq[E]]{
     def show(t: Seq[E]) = DiffShow[Set[E]].show(t.toSet)
     def diff(left: Seq[E], right: Seq[E]) = DiffShow[Set[E]].diff(left.toSet, right.toSet)
-  }
-  implicit def listAsSet[E:DiffShow]: DiffShow[List[E]] = new DiffShow[List[E]]{
-    def show(t: List[E]) = DiffShow[Set[E]].show(t.toSet)
-    def diff(left: List[E], right: List[E]) = DiffShow[Set[E]].diff(left.toSet, right.toSet)
-  }
-  implicit def vectorAsSet[E:DiffShow]: DiffShow[Vector[E]] = new DiffShow[Vector[E]]{
-    def show(t: Vector[E]) = DiffShow[Set[E]].show(t.toSet)
-    def diff(left: Vector[E], right: Vector[E]) = DiffShow[Set[E]].diff(left.toSet, right.toSet)
   }
 }
 
@@ -38,14 +34,14 @@ abstract class Comparison {
   }
   def isIdentical: Boolean
 }
-case class Identical( string: String ) extends Comparison {
+case class Identical private( string: String ) extends Comparison {
   def create( s: String ) = Identical( s )
   override def isIdentical = true
 }
 object Identical {
   def apply[T: DiffShow]( value: T ): Identical = Identical( DiffShow.show( value ) )
 }
-case class Different( string: String ) extends Comparison {
+case class Different private( string: String ) extends Comparison {
   def create( s: String ) = Different( s )
   override def isIdentical = false
 }
@@ -54,15 +50,14 @@ case class Error( string: String ) extends Comparison {
   override def isIdentical = throw new Exception( string )
 }
 object Different {
-  def apply[T: DiffShow]( left: T, right: T ): Different = Different( DiffShow.show( left ), DiffShow.show( right ) )
-  def apply( left: String, right: String ): Different = Different( showChange( left, right ) )
+  def apply[L: DiffShow, R: DiffShow]( left: L, right: R ): Different = Different( showChange( left, right ) )
 }
-
-abstract class DiffShow[T] {
+abstract class DiffShow[-T]{
   def show( t: T ): String
   def diff( left: T, right: T ): Comparison
   def diffable( left: T, right: T ) = diff(left, right).isIdentical
 }
+
 object DiffShow extends DiffShowInstances {
   def apply[T]( implicit diffShow: DiffShow[T] ) = diffShow
   def show[T]( t: T )( implicit diffShow: DiffShow[T] ): String = diffShow.show( t )
@@ -75,19 +70,11 @@ abstract class DiffShowFields[-T] { // contra-variant to allow Seq type class fo
 }
 
 abstract class DiffShowFieldsLowPriority {
-  def create[T]( _show: T => Map[String, String], _diff: ( T, T ) => Map[String, Comparison] ) = new DiffShowFields[T] {
-    def show( t: T ) = _show( t )
-    def diff( left: T, right: T ) = _diff( left, right )
-  }
-
-  implicit def other[T: scala.reflect.ClassTag]: DiffShowFields[T] = fallbackException[T]
-  def fallbackException[T: scala.reflect.ClassTag] = {
+  implicit def otherDiffShowFields[T: scala.reflect.ClassTag]: DiffShowFields[T] = new DiffShowFields[T]{
     val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShowFields[$T]" )
-    create[T](
-      v => throw new Exception( s"Cannot find DiffShowFields[$T] to show value " + v ),
-      ( l, r ) => throw new Exception( s"Cannot find DiffShowFields[$T] to diff values ($l, $r)" )
-    )
+    def show(v: T) = throw new Exception( s"Cannot find DiffShowFields[$T] to show value " + v )
+    def diff(l: T, r: T) = throw new Exception( s"Cannot find DiffShowFields[$T] to diff values ($l, $r)" )
   }
 }
 
@@ -115,54 +102,113 @@ object DiffShowFields {
 }
 
 abstract class DiffShowInstancesLowPriority {
-  def create[T]( _show: T => String, _diff: ( T, T ) => Comparison ) = new DiffShow[T] {
-    def show( t: T ) = _show( t )
-    def diff( left: T, right: T ) = _diff( left, right )
-  }
-
   // enable for debugging if your type class can't be found
-  implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = fallbackException[T]
-  def fallbackException[T: scala.reflect.ClassTag] = {
-    val T = scala.reflect.classTag[T].toString
+  implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = new DiffShow[T]{
+    private val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShow[$T]" )
-    create[T](
-      v => red(new Exception(s"ERROR: Cannot find DiffShow[$T] to show value " + v).showStackTrace),
-      ( l, r ) => Error( new Exception(s"ERROR: Cannot find DiffShow[$T] to show values ($l, $r)").showStackTrace )
-    )
+    def show(v: T) = red(new Exception(s"ERROR: Cannot find DiffShow[$T] to show value " + v).showStackTrace)
+    def diff(l:T, r:T) = Error( new Exception(s"ERROR: Cannot find DiffShow[$T] to show values ($l, $r)").showStackTrace )
   }
 }
 
 abstract class DiffShowInstances extends DiffShowInstances2 {
-  implicit def optionDiffShow[T, L <: Coproduct](
-    implicit
-    coproduct:     Generic.Aux[Option[T], L],
-    coproductShow: Lazy[DiffShow[L]]
-  ): DiffShow[Option[T]] = new DiffShow[Option[T]] {
-    def show( t: Option[T] ) = coproductShow.value.show( coproduct.to( t ) )
-    def diff( l: Option[T], r: Option[T] ) = coproductShow.value.diff( coproduct.to( l ), coproduct.to( r ) )
+  implicit def optionDiffShow[T:DiffShow]: DiffShow[Option[T]] = new DiffShow[Option[T]] {
+    def show( t: Option[T] ) = t match {
+      case None => "None"
+      case Some(v) => constructor("Some", List("" -> DiffShow.show(v)))
+    }
+    def diff( l: Option[T], r: Option[T] ) = (l,r) match {
+      case (None, None) => Identical(None)
+      case (Some(_l), Some(_r)) => DiffShow.diff(_l,_r).map(s => constructor("Some", List("" -> s)))
+      case (_l,_r) => Different(_l,_r)
+    }
   }
   implicit def someDiffShow[T](implicit ds: DiffShow[T]) = new DiffShow[Some[T]]{
     def show( s: Some[T] ) = constructor("Some", List("" -> ds.show(s.get)))
     def diff( l: Some[T], r: Some[T] ) = ds.diff(l.get, r.get).map( s => constructor("Some", List("" -> s)) )
   }
   
-  implicit object noneDiffShow extends DiffShow[None.type]{
-    def show( t: None.type ) = "None"
-    def diff( l: None.type, r: None.type ) = Identical(None)
+  implicit def singletonObjectDiffShow[T: SingletonObject]: DiffShow[T] = new DiffShow[T]{
+    def show( t: T ) = t.getClass.getSimpleName.stripSuffix("$")
+    def diff( l: T, r: T ) = Identical( l )
   }
 
-  def primitive[T]( show: T => String ) = create[T](
-    show,
-    ( left: T, right: T ) => if ( left == right ) Identical( show( left ) ) else Different( show( left ), show( right ) )
-  )
+  def primitive[T]( show: T => String ) = {
+    val _show = show
+    new DiffShow[T]{
+      implicit val diffShow = this
+      def show(t: T) = _show(t)
+      def diff( left: T, right: T ) = if ( left == right ) Identical( left ) else Different( left, right )
+    }
+  }
 
   // instances for primitive types
 
-  implicit def booleanDiffShow = primitive[Boolean]( _.toString )
-  implicit def floatDiffShow = primitive[Float]( _.toString )
-  implicit def doubleDiffShow = primitive[Double]( _.toString )
-  implicit def intDiffShow = primitive[Int]( _.toString )
-  implicit def stringDiffShow = primitive[String]( s => "\"" + s.replace( "(\n|\r)+", " " ).replace( " +", " " ) + "\"" )
+  implicit def booleanDiffShow: DiffShow[Boolean] = primitive( _.toString )
+  implicit def floatDiffShow: DiffShow[Float] = primitive( _.toString )
+  implicit def doubleDiffShow: DiffShow[Double] = primitive( _.toString )
+  implicit def intDiffShow: DiffShow[Int] = primitive( _.toString )
+  implicit def longDiffShow: DiffShow[Long] = primitive( _.toString )
+  implicit def stringDiffShow: DiffShow[String] = primitive( s => "\"" ++ s ++ "\"" )
+
+  // instances for some common types
+ 
+  implicit val uuidDiffShow: DiffShow[UUID] = primitive[UUID]( _.toString )
+
+  implicit def eitherDiffShow[L: DiffShow, R: DiffShow]: DiffShow[Either[L, R]] = {
+    new DiffShow[Either[L,R]]{
+      def show( e: Either[L,R] ) = constructor(
+        e.getClass.getSimpleName,
+        List( "" -> ( e.fold(DiffShow.show(_),DiffShow.show(_)) ) )
+      )
+      def diff(l: Either[L,R], r: Either[L,R]) = {
+        if ( l == r ) {
+          Identical( show( l ) )
+        } else {
+          Different((l, r) match {
+            case (Left(firstValue), Left(secondValue)) =>
+              constructor( "Left", List( "" -> showChange( firstValue, secondValue ) ) )
+            case (Right(firstValue), Right(secondValue)) =>
+              constructor( "Right", List( "" -> showChange( firstValue, secondValue ) ) )
+            case (firstValue, secondValue) =>
+              showChange( firstValue, secondValue )
+          })
+        }
+      }
+    }
+  }
+
+  implicit def caseClassDiffShow[T <: Product with Serializable: CaseClass, L <: HList](
+    implicit
+    ev: boolean.![SingletonObject[T]],
+    labelled:  LabelledGeneric.Aux[T, L],
+    hlistShow: Lazy[DiffShowFields[L]]
+  ): DiffShow[T] = new CaseClassDiffShow[T, L]
+
+  /** reusable class for case class instances, can be used to customize "diffable" for specific case classes */
+  class CaseClassDiffShow[T: CaseClass, L <: HList](
+    implicit
+    labelled:  LabelledGeneric.Aux[T, L],
+    hlistShow: Lazy[DiffShowFields[L]]
+  ) extends DiffShow[T] {
+    implicit val diffShow = this
+
+    def show( t: T ) = {
+      val fields = hlistShow.value.show( labelled to t ).toList.sortBy( _._1 )
+      constructor( t.getClass.getSimpleName, fields )
+    }
+    def diff( left: T, right: T ) = {
+      val fields = hlistShow.value.diff( labelled to left, labelled to right ).toList.sortBy( _._1 ).map {
+        case ( name, Different( value ) ) => Some( name -> value )
+        case ( name, Error( value ) ) => Some( name -> value )
+        case ( name, Identical( _ ) )     => None
+      }
+      if ( fields.flatten.nonEmpty ) Different(
+        constructorOption( left.getClass.getSimpleName, fields )
+      )
+      else Identical( left )
+    }
+  }
 }
 abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
   self: DiffShowInstances =>
@@ -187,10 +233,10 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
         if ( inlined.contains( "\n" ) ) s"(\n${keyValues.flatten.head._2.indent( 1 )}\n)" // avoid x in Some( x = ... )
         else s"( ${keyValues.flatten.head._2} )" // avoid x in Some(\n x = ... \n)
       )
-      else "(" + ( if ( suppressed ) " ...," else "" ) + (
+      else "(" ++ ( if ( suppressed ) " ...," else "" ) ++ (
         if ( inlined.size < 120 ) s""" ${inlined} """ // short enough content to inline
-        else ( "\n" + args.mkString( ",\n" ).indent( 1 ) + "\n" ) // long content, break lines
-      ) + ")"
+        else ( "\n" + args.mkString( ",\n" ).indent( 1 ) ++ "\n" ) // long content, break lines
+      ) ++ ")"
     )
   }
 
@@ -222,16 +268,16 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
         case Different(s) => Some("" -> s)
       }).toList.partition(_.isEmpty)
 
-      val string = constructorOption(
-        "Set",
-        changed ++ removed ++ added
-        ++ ( if( (identical ++ (left intersect right)).nonEmpty ) Some(None) else None )
-      )
-
       if ( removed.isEmpty && added.isEmpty && changed.isEmpty )
-        Identical( string )
+        Identical( show(left) )
       else
-        Different( string )
+        Different(
+          constructorOption(
+            "Set",
+            changed ++ removed ++ added
+            ++ ( if( (identical ++ (left intersect right)).nonEmpty ) Some(None) else None )
+          )
+        )
     }
   }
 
@@ -290,8 +336,8 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
       ( left, right ) match {
         case ( Inl( l ), Inl( r ) ) => headShow.diff( l, r )
         case ( Inr( l ), Inr( r ) ) => tailShow.diff( l, r )
-        case ( Inl( l ), Inr( r ) ) => Different( headShow.show( l ), tailShow.show( r ) )
-        case ( Inr( l ), Inl( r ) ) => Different( tailShow.show( l ), headShow.show( r ) )
+        case ( Inl( l ), Inr( r ) ) => Different( l, r )
+        case ( Inr( l ), Inl( r ) ) => Different( l, r )
       }
     }
   }
@@ -304,34 +350,5 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
     def show( t: T ) = coproductShow.value.show( coproduct.to( t ) )
     def diff( l: T, r: T ) = coproductShow.value.diff( coproduct.to( l ), coproduct.to( r ) )
   }
-
-  implicit def caseClassDiffShow[T <: Product with Serializable, L <: HList](
-    implicit
-    labelled:  LabelledGeneric.Aux[T, L],
-    hlistShow: Lazy[DiffShowFields[L]]
-  ): DiffShow[T] = new CaseClassDiffShow[T, L]
-
-  /** reusable class for case class instances, can be used to customize "diffable" for specific case classes */
-  class CaseClassDiffShow[T, L <: HList](
-    implicit
-    labelled:  LabelledGeneric.Aux[T, L],
-    hlistShow: Lazy[DiffShowFields[L]]
-  ) extends DiffShow[T] {
-    def show( t: T ) = {
-      val fields = hlistShow.value.show( labelled to t ).toList.sortBy( _._1 )
-      constructor( t.getClass.getSimpleName, fields )
-    }
-    def diff( left: T, right: T ) = {
-      val fields = hlistShow.value.diff( labelled to left, labelled to right ).toList.sortBy( _._1 ).map {
-        case ( name, Different( value ) ) => Some( name -> value )
-        case ( name, Error( value ) ) => Some( name -> value )
-        case ( name, Identical( _ ) )     => None
-      }
-      if ( fields.flatten.nonEmpty ) Different(
-        constructorOption( left.getClass.getSimpleName, fields )
-      )
-      else Identical( show( left ) )
-    }
-  }
-
+    implicit val diffShow = this
 }
