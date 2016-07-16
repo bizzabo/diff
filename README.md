@@ -11,15 +11,20 @@ Be aware: Collections (List, Seq, etc.) are compared like sets, i.e. ignoring or
 #### Scala 2.11
 
 ```scala
-"ai.x" %% "diff" % "1.1.0"
+"ai.x" %% "diff" % "1.2.0"
 ```
 
 #### Scala 2.10
 
+Stopped working in 1.2.0 due to what seems like a Scala compiler bug.
+See https://github.com/xdotai/diff/issues/18
+
+<!--
 ```scala
 "ai.x" %% "diff" % "1.1.0"
 compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 ```
+-->
 
 ### Usage
 
