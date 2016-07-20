@@ -29,7 +29,9 @@ compilerPlugin("org.scalamacros" % "paradise" % "2.1.0" cross CrossVersion.full)
 ### Usage
 
 ```scala
-println(  ai.x.diff.DiffShow.diff[Foo]( before, after ).string  )
+import ai.x.diff.DiffShow
+import ai.x.diff.conversions._
+println(  DiffShow.diff[Foo]( before, after ).string  )
 ```
 
 Be aware that diff throws an Exception if a DiffShow type class instance for some field
