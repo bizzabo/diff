@@ -3,6 +3,12 @@ import ai.x.diff.conversions._
 import scala.collection.immutable.SortedMap
 import java.util.UUID
 
+object Foo1 {
+  object Foo2 {
+    case object Foo3
+  }
+}
+
 sealed trait Parent
 case class Bar( s: String, i: Int ) extends Parent
 case class Foo( bar: Bar, b: List[Int], parent: Option[Parent] ) extends Parent
@@ -163,6 +169,11 @@ object Main extends App {
         "axx" :: "yxcv" :: Nil
       ).string
     )
+  }
+
+  {
+    // testing hack for https://issues.scala-lang.org/browse/SI-2034
+    assertIdentical( Foo1.Foo2.Foo3, Foo1.Foo2.Foo3 )
   }
 
   /*
