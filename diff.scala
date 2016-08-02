@@ -4,6 +4,7 @@ import org.cvogt.scala.StringExtensions
 import java.util.UUID
 import org.cvogt.scala.debug.ThrowableExtensions
 import org.cvogt.scala.constraint.{CaseClass, SingletonObject, boolean}
+import scala.reflect.macros._
 
 object `package` {
   def red( s: String ) = Console.RED + s + Console.RESET
@@ -103,12 +104,14 @@ object DiffShowFields {
 
 abstract class DiffShowInstancesLowPriority {
   // enable for debugging if your type class can't be found
+  /*
   implicit def otherDiffShow[T: scala.reflect.ClassTag]: DiffShow[T] = new DiffShow[T]{
     private val T = scala.reflect.classTag[T].toString
     // throw new Exception( s"Cannot find DiffShow[$T]" )
     def show(v: T) = red(new Exception(s"ERROR: Cannot find DiffShow[$T] to show value " + v).showStackTrace)
     def diff(l:T, r:T) = Error( new Exception(s"ERROR: Cannot find DiffShow[$T] to show values ($l, $r)").showStackTrace )
   }
+  */
 }
 
 abstract class DiffShowInstances extends DiffShowInstances2 {
@@ -128,11 +131,6 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
     def diff( l: Some[T], r: Some[T] ) = ds.diff(l.get, r.get).map( s => constructor("Some", List("" -> s)) )
   }
   
-  implicit def singletonObjectDiffShow[T: SingletonObject]: DiffShow[T] = new DiffShow[T]{
-    def show( t: T ) = t.getClass.getSimpleName.stripSuffix("$")
-    def diff( l: T, r: T ) = Identical( l )
-  }
-
   def primitive[T]( show: T => String ) = {
     val _show = show
     new DiffShow[T]{
@@ -180,7 +178,7 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
 
   implicit def caseClassDiffShow[T <: Product with Serializable: CaseClass, L <: HList](
     implicit
-    ev: boolean.![SingletonObject[T]],
+    //ev: boolean.![SingletonObject[T]],
     labelled:  LabelledGeneric.Aux[T, L],
     hlistShow: Lazy[DiffShowFields[L]]
   ): DiffShow[T] = new CaseClassDiffShow[T, L]
@@ -212,6 +210,11 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
 }
 abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
   self: DiffShowInstances =>
+
+  implicit def singletonObjectDiffShow[T: SingletonObject]: DiffShow[T] = new DiffShow[T]{
+    def show( t: T ) = t.getClass.getSimpleName.stripSuffix("$")
+    def diff( l: T, r: T ) = Identical( l )
+  }
 
   // helper methods
   def constructor( name: String, keyValues: List[( String, String )] ): String = constructorOption( name, keyValues.map( Option( _ ) ) )
@@ -315,7 +318,7 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
   }
 
   // instances for Shapeless types
-
+  /*
   implicit object CNilDiffShow extends DiffShow[CNil] {
     def show( t: CNil ) = throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
     def diff( left: CNil, right: CNil ) = throw new Exception("Methods in CNil type class instance should never be called. Right shapeless?")
@@ -341,8 +344,10 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
       }
     }
   }
+  */
 
-  implicit def sealedDiffShow[T, L <: Coproduct](
+  /*
+  implicit def sealedDiffShow[T: Sealed, L <: Coproduct](
     implicit
     coproduct:     Generic.Aux[T, L],
     coproductShow: Lazy[DiffShow[L]]
@@ -350,5 +355,67 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
     def show( t: T ) = coproductShow.value.show( coproduct.to( t ) )
     def diff( l: T, r: T ) = coproductShow.value.diff( coproduct.to( l ), coproduct.to( r ) )
   }
-    implicit val diffShow = this
+  */
+
+  implicit def sealedDiffShow[T](implicit ev1:Abstract[T], ev2: Sealed[T]): DiffShow[T] = macro SealedDiffShow.sealedDiffShowMacro[T]
+}
+
+class SealedDiffShow(override val c: blackbox.Context) extends SealedDispatchMacros(c){
+  import c.universe._
+  def sealedDiffShowMacro[T:c.WeakTypeTag](ev1:Tree, ev2: Tree) = {
+    val T = c.weakTypeOf[T].typeSymbol
+    q"""
+      new _root_.ai.x.diff.DiffShow[$T] {
+        val dispatchMap = _root_.ai.x.diff.SealedDispatch.sealedDispatch[$T,_root_.ai.x.diff.DiffShow]
+        def dispatch(t: $T) = dispatchMap(t.getClass).asInstanceOf[_root_.ai.x.diff.DiffShow[$T]]
+        def show( t: $T ) = dispatch(t).show(t)
+        def diff( l: $T, r: $T ) = dispatch(l).diff(l,r)
+      }
+    """
+  }
+}
+
+object SealedDispatch{
+  def sealedDispatch[T, TypeClass[_]](implicit ev1:Abstract[T], ev2: Sealed[T]): Map[Class[_],TypeClass[_]] = macro SealedDispatchMacros.sealedDispatch[T,TypeClass]
+}
+class SealedDispatchMacros(val c: blackbox.Context){
+  import c.universe._
+  def sealedDispatch[T: c.WeakTypeTag, TypeClass[_]](ev1: Tree, ev2: Tree)(implicit ev3: c.WeakTypeTag[TypeClass[_]]) = {
+    val T = c.weakTypeOf[T]
+    val TypeClass = c.weakTypeOf[TypeClass[_]].typeSymbol
+    val (classes, verifiers) = knownDirectSubclassesAndVerifier(T.dealias.typeSymbol.asClass)
+    val mappings = classes.map(cls => q"classOf[$cls] -> implicitly[$TypeClass[$cls]]")
+    q"""{
+      ..$verifiers
+      Map[Class[_],$TypeClass[_]]( ..$mappings )
+    }"""
+  }
+  def knownDirectSubclassesAndVerifier( T: ClassSymbol ): ( Set[ClassSymbol], List[Tree] ) = {
+    val subs = T.knownDirectSubclasses
+
+    // hack to detect breakage of knownDirectSubclasses as suggested in 
+    // https://gitter.im/scala/scala/archives/2015/05/05 and
+    // https://gist.github.com/retronym/639080041e3fecf58ba9
+    val global = c.universe.asInstanceOf[scala.tools.nsc.Global]
+    def checkSubsPostTyper = if ( subs != T.knownDirectSubclasses )
+      c.error(
+        c.macroApplication.pos,
+        s"""No child classes found for $T. If there clearly are child classes,
+Try moving the call lower in the file, into a separate file, a sibbling package, a separate sbt sub project or else.
+This is caused by https://issues.scala-lang.org/browse/SI-7046 and can only be avoided by manually moving the call.
+It is triggered when a macro call happend in a place, where typechecking of $T hasn't been completed yet.
+Completion is required in order to find subclasses.
+"""
+      )
+
+    val checkSubsPostTyperTypTree =
+      new global.TypeTreeWithDeferredRefCheck()( () => { checkSubsPostTyper; global.TypeTree( global.NoType ) } ).asInstanceOf[TypTree]
+
+    val name = TypeName( c.freshName( "VerifyKnownDirectSubclassesPostTyper" ) )
+
+    (
+      subs.map( _.asClass ).toSet,
+      List( q"type ${name} = $checkSubsPostTyperTypTree" )
+    )
+  }
 }
