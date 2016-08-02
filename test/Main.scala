@@ -5,6 +5,7 @@ import java.util.UUID
 
 sealed trait Parent
 case class Bar( s: String, i: Int ) extends Parent
+case class Fooo( bar: Bar, b: List[Int], parent: Option[Int] ) extends Parent
 case class Foo( bar: Bar, b: List[Int], parent: Option[Parent] ) extends Parent
 
 case class Id(int: Int)
@@ -17,6 +18,18 @@ object Main extends App {
   val fooAsParent: Parent = foo
   val fooString = """Foo( b = Set(), bar = Bar( i = 1, s = "test" ), parent = None )"""
 
+  //implicitly[org.cvogt.scala.constraint.boolean.![org.cvogt.scala.constraint.SingletonObject[Foo]]]
+
+  //println(implicitly[DiffShow[Bar]](DiffShow.caseClassDiffShow).show(bar))
+  //implicitly[Lazy[DiffShow[Parent]]]
+  implicitly[DiffShow[Parent]]
+  //println(implicitly[DiffShow[Fooo]](DiffShow.caseClassDiffShow))
+  //println(implicitly[shapeless.LabelledGeneric[Bar]])
+  //println(implicitly[DiffShowFields[Bar]])
+  //println(implicitly[shapeless.LabelledGeneric[Foo]])
+  //println(implicitly[DiffShowFields[Foo]])
+  //println(implicitly[DiffShow[Foo]](DiffShow.caseClassDiffShow).show(foo))
+  /*
   def assertIdentical[T:DiffShow](left: T, right: T, expectedOutput: String = null) = {
     val c = DiffShow.diff(left, right)
     assert(c.isIdentical, c.toString)
@@ -203,5 +216,6 @@ object Main extends App {
     )
   )
   """
+  */
   */
 }
