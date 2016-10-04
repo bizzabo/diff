@@ -1,12 +1,10 @@
 import cbt._
 import ai.x.build.{XdotaiFreeSoftwareBuild,team}
-// cbt:https://github.com/cvogt/cbt.git#b5d86995128a45c33117ecfb7365f0eb2b450a61
+// cbt:https://github.com/cvogt/cbt.git#95728f6041a32e081a1f4129b8483ef622179b45
 class Build(val context: cbt.Context) extends XdotaiFreeSoftwareBuild{
   def name = "diff"
-  def defaultVersion = "1.2.0"
+  def defaultVersion = "1.2.1"
   def description = "diff tool for Scala data structures (nested case classes etc)"
-
-  override def runClass: String = "ai.x.diff.Test"
 
   def inceptionYear = 2016
   def developers = Seq( team.cvogt )
