@@ -13,8 +13,22 @@ object `package` {
   def arrow( l: String, r: String ) = l + " -> " + r
   def showChangeRaw( l: String, r: String ): String = red( l ) + " -> " + green( r )
   def showChange[L:DiffShow,R:DiffShow]( l: L, r: R ): String = showChangeRaw( DiffShow.show(l), DiffShow.show(r) )
-}
 
+  /**
+    * Hack to avoid scala compiler bug with getSimpleName
+    * @see https://issues.scala-lang.org/browse/SI-2034
+    */
+  private[diff] def getClassSimpleName(klass: Class[_]): String = {
+    try {
+      klass.getSimpleName
+    } catch {
+      case _: InternalError ⇒
+        val fullName = klass.getName.stripSuffix("$")
+        val fullClassName = fullName.substring(fullName.lastIndexOf(".") + 1)
+        fullClassName.substring(fullClassName.lastIndexOf("$") + 1)
+    }
+  }
+}
 
 object conversions{
   implicit def seqAsSet[E:DiffShow]: DiffShow[Seq[E]] = new DiffShow[Seq[E]]{
@@ -127,9 +141,9 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
     def show( s: Some[T] ) = constructor("Some", List("" -> ds.show(s.get)))
     def diff( l: Some[T], r: Some[T] ) = ds.diff(l.get, r.get).map( s => constructor("Some", List("" -> s)) )
   }
-  
+
   implicit def singletonObjectDiffShow[T: SingletonObject]: DiffShow[T] = new DiffShow[T]{
-    def show( t: T ) = t.getClass.getSimpleName.stripSuffix("$")
+    def show( t: T ) = getClassSimpleName(t.getClass)
     def diff( l: T, r: T ) = Identical( l )
   }
 
@@ -152,13 +166,13 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
   implicit def stringDiffShow: DiffShow[String] = primitive( s => "\"" ++ s ++ "\"" )
 
   // instances for some common types
- 
+
   implicit val uuidDiffShow: DiffShow[UUID] = primitive[UUID]( _.toString )
 
   implicit def eitherDiffShow[L: DiffShow, R: DiffShow]: DiffShow[Either[L, R]] = {
     new DiffShow[Either[L,R]]{
       def show( e: Either[L,R] ) = constructor(
-        e.getClass.getSimpleName,
+        getClassSimpleName(e.getClass),
         List( "" -> ( e.fold(DiffShow.show(_),DiffShow.show(_)) ) )
       )
       def diff(l: Either[L,R], r: Either[L,R]) = {
@@ -195,7 +209,7 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
 
     def show( t: T ) = {
       val fields = hlistShow.value.show( labelled to t ).toList.sortBy( _._1 )
-      constructor( t.getClass.getSimpleName, fields )
+      constructor( getClassSimpleName(t.getClass), fields )
     }
     def diff( left: T, right: T ) = {
       val fields = hlistShow.value.diff( labelled to left, labelled to right ).toList.sortBy( _._1 ).map {
@@ -204,7 +218,7 @@ abstract class DiffShowInstances extends DiffShowInstances2 {
         case ( name, Identical( _ ) )     => None
       }
       if ( fields.flatten.nonEmpty ) Different(
-        constructorOption( left.getClass.getSimpleName, fields )
+        constructorOption( getClassSimpleName(left.getClass), fields )
       )
       else Identical( left )
     }
