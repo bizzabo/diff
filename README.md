@@ -75,11 +75,13 @@ import ai.x.diff._
 Sometimes you may need to write your own type class instances. For example for non-case classes that don't compare well using ==.
 
 ```scala
+import ai.x.diff._
 import org.joda.time.LocalTime
-implicit def localTimeDiffShow: DiffShow[LocalTime] = new DiffShow[LocalTime]{
+
+implicit def localTimeDiffShow: DiffShow[LocalTime] = new DiffShow[LocalTime] {
   def show ( d: LocalTime ) = "LocalTime(" + d.toString + ")"
   def diff( l: LocalTime, r: LocalTime ) =
-    if ( l isEqual r ) Identical( show( l ) ) else Different( showChange( l, r ) )
+    if ( l isEqual r ) Identical( l ) else Different( l, r )
 }
 ```
 
