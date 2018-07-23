@@ -6,9 +6,9 @@ import xerial.sbt.Sonatype._
 
 val projectName = "diff"
 
-version := "2.0"
+version := "1.2.1"
 name := projectName
-scalaVersion := "2.12.6"
+scalaVersion := "2.11.11"
 description := "diff tool for Scala data structures (nested case classes etc)"
 libraryDependencies ++=   Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
