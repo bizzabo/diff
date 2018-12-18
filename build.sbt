@@ -6,9 +6,10 @@ import xerial.sbt.Sonatype._
 
 val projectName = "diff"
 
-version := "2.0"
+version := "2.0.1"
 name := projectName
-scalaVersion := "2.12.6"
+scalaVersion := "2.12.8"
+crossScalaVersions := Seq("2.11.11", scalaVersion.value)
 description := "diff tool for Scala data structures (nested case classes etc)"
 libraryDependencies ++=   Seq(
   "com.chuusai" %% "shapeless" % "2.3.2",
@@ -16,7 +17,11 @@ libraryDependencies ++=   Seq(
   "org.scalactic" %% "scalactic" % "3.0.5",
   "org.scalatest" %% "scalatest" % "3.0.5" % "test"
 )
+
 resolvers ++= Seq(Resolver.sonatypeRepo("releases"),Resolver.sonatypeRepo("snapshots"))
+useGpg := true
+ 
+credentials += Credentials(Path.userHome / ".sbt" / "sonatype_credential")
 
 testOptions in Test += Tests.Argument(TestFrameworks.ScalaTest, "-oSD")
 organizationName := "x.ai"
