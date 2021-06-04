@@ -305,7 +305,7 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
       val identical = left.keys.toList intersect right.keys.toList
       val removed = left.keys.toList diff right.keys.toList
       val added = right.keys.toList diff left.keys.toList
-      def show( keys: List[K] ) = keys.map( k => DiffShow.show( k ) -> DiffShow.show( right( k ) ) )
+      def show( keys: List[K], m: Map[K, V] ) = keys.map( k => DiffShow.show( k ) -> DiffShow.show( m( k ) ) )
       val changed = for {
         key <- left.keys.toList diff removed
         Different( s ) <- DiffShow.diff( left( key ), right( key ) ) :: Nil
@@ -316,8 +316,8 @@ abstract class DiffShowInstances2 extends DiffShowInstancesLowPriority {
           "Map",
           identical.map( _ => None ) ++ Seq(
             changed,
-            show( removed ).map( ( arrow _ ).tupled ).map( red ),
-            show( added ).map( ( arrow _ ).tupled ).map( green )
+            show( removed, left ).map( ( arrow _ ).tupled ).map( red ),
+            show( added, right ).map( ( arrow _ ).tupled ).map( green )
           ).flatten.map( s => Option( ( "", s ) ) )
         )
       if ( removed.isEmpty && added.isEmpty && changed.isEmpty )
