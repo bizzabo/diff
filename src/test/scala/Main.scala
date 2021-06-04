@@ -178,6 +178,23 @@ class AllTests extends FunSuite {
       assertIdentical( Foo1.Foo2.Foo3, Foo1.Foo2.Foo3 )
     }
 
+    {
+      // testing issue when comparing Maps (https://github.com/xdotai/diff/issues/24)
+      println(
+        DiffShow[Map[String, String]](DiffShow.mapDiffShow).diff(
+          Map("a" -> "b"),
+          Map("a" -> "b", "c" -> "d")
+        ).string
+      )
+
+      println(
+        DiffShow[Map[String, String]](DiffShow.mapDiffShow).diff(
+          Map("a" -> "b", "c" -> "d"),
+          Map("a" -> "b")
+        ).string
+      )
+    }
+
     /*
 
   //import pprint.Config.Defaults._
